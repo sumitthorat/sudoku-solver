@@ -371,7 +371,7 @@ public class MainActivity extends Activity {
                 intersectionPoints.add(p);
             }
 
-        Log.i("OpenCVT", "After circles");
+        Log.i("OpenCVT", "After circles.");
         List<Rect> sudokuTiles = new ArrayList<>();
         for(int a = 0; a < 89; a++) {
             if(a == 9 || a == 19 || a == 29 || a == 39 || a == 49 || a == 59 || a == 69 || a == 79)
