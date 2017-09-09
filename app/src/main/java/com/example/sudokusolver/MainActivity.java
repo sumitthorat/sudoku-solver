@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -168,7 +169,7 @@ public class MainActivity extends Activity {
             if(shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                 Toast.makeText(this, "Need external storage permission", Toast.LENGTH_SHORT).show();
             }
-            requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_EXT_STORAGE);
+            requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA}, REQUEST_EXT_STORAGE);
         }
     }
 
@@ -176,7 +177,7 @@ public class MainActivity extends Activity {
    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
        Log.i("OpenCVT", "inside req permiss");
        if(requestCode == REQUEST_EXT_STORAGE) {
-           if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+           if(grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
                callCameraApp();
            } else {
                Toast.makeText(this, "External write permission not granted!", Toast.LENGTH_SHORT).show();
@@ -198,7 +199,11 @@ public class MainActivity extends Activity {
         } catch ( IOException e) {
             e.printStackTrace();
         }
-        callCameraApplicationIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
+        String authorities = getApplicationContext().getPackageName() + ".fileprovider";
+        Uri imageUri = FileProvider.getUriForFile(this, authorities, photoFile);
+        callCameraApplicationIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+
+//        callCameraApplicationIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
         startActivityForResult(callCameraApplicationIntent, ACTIVITY_START_CAMERA_APP);
     }
 
@@ -216,11 +221,9 @@ public class MainActivity extends Activity {
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "IMAGE" + timestamp + "_";
         File storageDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-
         File image = File.createTempFile(imageFileName, ".jpg", storageDirectory);
         mImageFileLocation = image.getAbsolutePath();
         return image;
-
     }
 
     private void rotateBitmap(Bitmap bitmap) {
