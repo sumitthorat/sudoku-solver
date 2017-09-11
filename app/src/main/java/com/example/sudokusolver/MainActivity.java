@@ -53,7 +53,7 @@ import java.util.List;
 public class MainActivity extends Activity {
     ImageView imageView;
     Bitmap inputBitmap = null;
-    private static final int ACTIVITY_START_CAMERA_APP = 0, REQUEST_EXT_STORAGE = 1;
+    private static final int ACTIVITY_START_CAMERA_APP = 0, REQUEST_EXT_STORAGE = 1, SELECT_FROM_GALLERY = 2;
     private String mImageFileLocation;
     private TessBaseAPI mTess;
     String datapath = "";
@@ -86,11 +86,11 @@ public class MainActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-        Button button = (Button) findViewById(R.id.take_picture);
+
         imageView = (ImageView) findViewById(R.id.image_view);
 
         String language = "eng";
-        datapath = getFilesDir()+ "/tesseract/";
+        datapath = getFilesDir() + "/tesseract/";
         mTess = new TessBaseAPI();
 
         checkFile(new File(datapath + "tessdata/"));
@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
         mTess.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK);
         mTess.setVariable("classify_bin_numeric_mode", "1");
 
+        Button button = (Button) findViewById(R.id.take_picture);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -115,14 +116,28 @@ public class MainActivity extends Activity {
             }
         });
 
+        Button button2 = (Button) findViewById(R.id.load_gallery);
+        button2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loadImagefromGallery();
+            }
+        });
+
+    }
+
+    private void loadImagefromGallery() {
+        Intent galleryIntent = new Intent(Intent.ACTION_PICK);
+        galleryIntent.setType("image/*");
+        startActivityForResult(galleryIntent, SELECT_FROM_GALLERY);
     }
 
     private void checkFile(File dir) {
-        if (!dir.exists()&& dir.mkdirs()){
+        if (!dir.exists() && dir.mkdirs()) {
             copyFiles();
         }
-        if(dir.exists()) {
-            String datafilepath = datapath+ "/tessdata/eng.traineddata";
+        if (dir.exists()) {
+            String datafilepath = datapath + "/tessdata/eng.traineddata";
             File datafile = new File(datafilepath);
 
             if (!datafile.exists()) {
@@ -163,30 +178,29 @@ public class MainActivity extends Activity {
 
     public void takePhoto() {
         Log.i("OpenCVT", "inside takephoto");
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             callCameraApp();
         } else {
-            if(shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                 Toast.makeText(this, "Need external storage permission", Toast.LENGTH_SHORT).show();
             }
-            requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA}, REQUEST_EXT_STORAGE);
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA}, REQUEST_EXT_STORAGE);
         }
     }
 
-   @Override
-   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-       Log.i("OpenCVT", "inside req permiss");
-       if(requestCode == REQUEST_EXT_STORAGE) {
-           if(grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-               callCameraApp();
-           } else {
-               Toast.makeText(this, "External write permission not granted!", Toast.LENGTH_SHORT).show();
-           }
-       } else {
-           super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-       }
-   }
-
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        Log.i("OpenCVT", "inside req permiss");
+        if (requestCode == REQUEST_EXT_STORAGE) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                callCameraApp();
+            } else {
+                Toast.makeText(this, "External write permission not granted!", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
+    }
 
 
     public void callCameraApp() {
@@ -196,7 +210,7 @@ public class MainActivity extends Activity {
         File photoFile = null;
         try {
             photoFile = createImageFile();
-        } catch ( IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
         String authorities = getApplicationContext().getPackageName() + ".fileprovider";
@@ -209,11 +223,19 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == ACTIVITY_START_CAMERA_APP && resultCode == RESULT_OK) {
+        if (requestCode == ACTIVITY_START_CAMERA_APP && resultCode == RESULT_OK) {
             Toast.makeText(this, "Picture taken successfully!", Toast.LENGTH_SHORT).show();
             Bitmap rawInputBitmap = BitmapFactory.decodeFile(mImageFileLocation);
             rotateBitmap(rawInputBitmap);
             imageView.setImageBitmap(inputBitmap);
+        } else if (requestCode == SELECT_FROM_GALLERY && resultCode == RESULT_OK) {
+            try {
+                Uri imageUri = data.getData();
+                InputStream imageStream = getContentResolver().openInputStream(imageUri);
+                inputBitmap = BitmapFactory.decodeStream(imageStream);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -292,7 +314,7 @@ public class MainActivity extends Activity {
         Collections.sort(verticalLines, new VerticalLinesSort());
         Collections.sort(horizontalLines, new HorizontalLinesSort());
         int i = 0, j;
-        for(j = 0; j < 10; j++) {
+        for (j = 0; j < 10; j++) {
             double smallestY = 5000, smallestX = 5000;
             double largestY = 0, largestX = 0;
             for (; i < verticalLines.size() - 1; i++) {
@@ -300,13 +322,13 @@ public class MainActivity extends Activity {
                 double[] vertNext = verticalLines.get(i + 1);
                 if (Math.abs(vert[0] - vertNext[0]) > 80 || Math.abs(vert[2] - vertNext[2]) > 80)
                     break;
-                if(vert[0] < smallestX)
+                if (vert[0] < smallestX)
                     smallestX = vert[0];
-                if(vert[2] < smallestX)
+                if (vert[2] < smallestX)
                     smallestX = vert[2];
-                if(vert[0] > largestX)
+                if (vert[0] > largestX)
                     largestX = vert[0];
-                if(vert[2] > largestX)
+                if (vert[2] > largestX)
                     largestX = vert[2];
                 if (vert[1] < smallestY)
                     smallestY = vert[1];
@@ -318,7 +340,7 @@ public class MainActivity extends Activity {
                     largestY = vert[3];
             }
             double[] toAdd = new double[4];
-            toAdd[0] = smallestX ;
+            toAdd[0] = smallestX;
             toAdd[1] = smallestY - 100;
             toAdd[2] = largestX;
             toAdd[3] = largestY + 100;
@@ -327,7 +349,7 @@ public class MainActivity extends Activity {
         }
 
         int ii = 0, jj;
-        for(jj = 0; jj < 10; jj++) {
+        for (jj = 0; jj < 10; jj++) {
             double smallestY = 5000, smallestX = 5000;
             double largestY = 0, largestX = 0;
             for (; ii < horizontalLines.size() - 1; ii++) {
@@ -335,13 +357,13 @@ public class MainActivity extends Activity {
                 double[] vertNext = horizontalLines.get(ii + 1);
                 if (Math.abs(vert[1] - vertNext[1]) > 80 || Math.abs(vert[3] - vertNext[3]) > 80)
                     break;
-                if(vert[0] < smallestX)
+                if (vert[0] < smallestX)
                     smallestX = vert[0];
-                if(vert[2] < smallestX)
+                if (vert[2] < smallestX)
                     smallestX = vert[2];
-                if(vert[0] > largestX)
+                if (vert[0] > largestX)
                     largestX = vert[0];
-                if(vert[2] > largestX)
+                if (vert[2] > largestX)
                     largestX = vert[2];
                 if (vert[1] < smallestY)
                     smallestY = vert[1];
@@ -353,7 +375,7 @@ public class MainActivity extends Activity {
                     largestY = vert[3];
             }
             double[] toAdd = new double[4];
-            toAdd[0] = smallestX - 100 ;
+            toAdd[0] = smallestX - 100;
             toAdd[1] = smallestY;
             toAdd[2] = largestX + 100;
             toAdd[3] = largestY;
@@ -365,16 +387,16 @@ public class MainActivity extends Activity {
 
 
         List<Point> intersectionPoints = new ArrayList<>();
-        for(double [] hort : SingleHorizontalLines)
-            for(double [] vert : SingleVerticalLines) {
+        for (double[] hort : SingleHorizontalLines)
+            for (double[] vert : SingleVerticalLines) {
                 Point p = LineOperations.LineIntersection(new Point(hort[0], hort[1]), new Point(hort[2], hort[3]), new Point(vert[0], vert[1]), new Point(vert[2], vert[3]));
                 intersectionPoints.add(p);
             }
 
         Log.i("OpenCVT", "After circles.");
         List<Rect> sudokuTiles = new ArrayList<>();
-        for(int a = 0; a < 89; a++) {
-            if(a == 9 || a == 19 || a == 29 || a == 39 || a == 49 || a == 59 || a == 69 || a == 79)
+        for (int a = 0; a < 89; a++) {
+            if (a == 9 || a == 19 || a == 29 || a == 39 || a == 49 || a == 59 || a == 69 || a == 79)
                 continue;
             Point p = intersectionPoints.get(a);
             Point pRight = intersectionPoints.get(a + 1);
@@ -403,7 +425,7 @@ public class MainActivity extends Activity {
         int finalNos[] = new int[81];
         int sudoku[][] = new int[9][9];
 
-        for(int index = 0; index < sudokuTiles.size(); index++) {
+        for (int index = 0; index < sudokuTiles.size(); index++) {
             Rect r = sudokuTiles.get(index);
             Mat sudokuTileMat = new Mat(grayMat, r);
             Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
@@ -417,8 +439,7 @@ public class MainActivity extends Activity {
             OCRResult = mTess.getUTF8Text();
             if (OCRResult.length() == 1) {
                 firstIt[index] = OCRResult;
-            }
-            else {
+            } else {
                 firstIt[index] = "0";
             }
             mTess.clear();
@@ -426,7 +447,7 @@ public class MainActivity extends Activity {
 
         Log.i("OpenCVT", "After 1st Tess");
 
-        for(int index = 0; index < sudokuTiles.size(); index++) {
+        for (int index = 0; index < sudokuTiles.size(); index++) {
             Rect r = sudokuTiles.get(index);
             r.x = r.x + 1;
             r.y = r.y + 1;
@@ -444,8 +465,7 @@ public class MainActivity extends Activity {
             OCRResult = mTess.getUTF8Text();
             if (OCRResult.length() == 1) {
                 secIt[index] = OCRResult;
-            }
-            else {
+            } else {
                 secIt[index] = "0";
             }
 
@@ -454,7 +474,7 @@ public class MainActivity extends Activity {
 
         Log.i("OpenCVT", "2nd tess");
 
-        for(int index = 0; index < sudokuTiles.size(); index++) {
+        for (int index = 0; index < sudokuTiles.size(); index++) {
             Rect r = sudokuTiles.get(index);
             r.x = r.x - 1;
             r.y = r.y - 1;
@@ -472,8 +492,7 @@ public class MainActivity extends Activity {
             OCRResult = mTess.getUTF8Text();
             if (OCRResult.length() == 1) {
                 thirdIt[index] = OCRResult;
-            }
-            else {
+            } else {
                 thirdIt[index] = "0";
             }
 
@@ -482,7 +501,7 @@ public class MainActivity extends Activity {
 
         Log.i("OpenCVT", "3rd tess");
 
-        for(int index = 0; index < sudokuTiles.size(); index++) {
+        for (int index = 0; index < sudokuTiles.size(); index++) {
             Rect r = sudokuTiles.get(index);
             r.x = r.x + 2;
             r.y = r.y + 2;
@@ -500,8 +519,7 @@ public class MainActivity extends Activity {
             OCRResult = mTess.getUTF8Text();
             if (OCRResult.length() == 1) {
                 fourthIt[index] = OCRResult;
-            }
-            else {
+            } else {
                 fourthIt[index] = "0";
             }
 
@@ -510,7 +528,7 @@ public class MainActivity extends Activity {
 
         Log.i("OpenCVT", "4th tess");
 
-        for(int index = 0; index < sudokuTiles.size(); index++) {
+        for (int index = 0; index < sudokuTiles.size(); index++) {
             Rect r = sudokuTiles.get(index);
             r.x = r.x - 2;
             r.y = r.y - 2;
@@ -528,8 +546,7 @@ public class MainActivity extends Activity {
             OCRResult = mTess.getUTF8Text();
             if (OCRResult.length() == 1) {
                 fifthIt[index] = OCRResult;
-            }
-            else {
+            } else {
                 fifthIt[index] = "0";
             }
 
@@ -539,9 +556,9 @@ public class MainActivity extends Activity {
         Log.i("OpenCVT", "5th tess");
 
         int s = 0, t = 0;
-        for(int x = 0; x < 81; x++) {
+        for (int x = 0; x < 81; x++) {
             int count[] = new int[10];
-            for(int y = 0; y < 10; y++)
+            for (int y = 0; y < 10; y++)
                 count[y] = 0;
 
             count[Integer.parseInt(firstIt[x])]++;
@@ -551,15 +568,15 @@ public class MainActivity extends Activity {
             count[Integer.parseInt(fifthIt[x])]++;
 
             int max = 0, mNo = 0;
-            for(int z = 0; z < 10; z++) {
-                if(count[z] > max) {
+            for (int z = 0; z < 10; z++) {
+                if (count[z] > max) {
                     max = count[z];
                     mNo = z;
                 }
             }
             finalNos[x] = mNo;
 
-            if(x == 9 || x == 18 || x == 27|| x == 36|| x == 45 || x == 54 || x == 63 || x == 72) {
+            if (x == 9 || x == 18 || x == 27 || x == 36 || x == 45 || x == 54 || x == 63 || x == 72) {
                 t = 0;
                 s++;
             }
@@ -568,14 +585,14 @@ public class MainActivity extends Activity {
         }
 
         int x = 0;
-        for(Rect r : sudokuTiles) {
-            if(finalNos[x] != 0)
+        for (Rect r : sudokuTiles) {
+            if (finalNos[x] != 0)
                 Core.putText(inputMat, Integer.toString(finalNos[x]), new Point(r.x, r.y), 1, 10.0f, new Scalar(0, 255, 0), 8);
             x++;
         }
 
-        for(int a = 0; a < 9; a++) {
-            for(int b = 0; b < 9; b++) {
+        for (int a = 0; a < 9; a++) {
+            for (int b = 0; b < 9; b++) {
                 Log.i("OpenCVT", " " + sudoku[a][b]);
             }
             Log.i("OpenCVT", "next row");
