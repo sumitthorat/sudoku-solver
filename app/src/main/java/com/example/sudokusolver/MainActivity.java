@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -18,7 +19,6 @@ import android.support.v4.content.FileProvider;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -51,12 +51,14 @@ import java.util.List;
 
 
 public class MainActivity extends Activity {
+
     ImageView imageView;
     Bitmap inputBitmap = null;
     private static final int ACTIVITY_START_CAMERA_APP = 0, REQUEST_EXT_STORAGE = 1, SELECT_FROM_GALLERY = 2;
     private String mImageFileLocation;
     private TessBaseAPI mTess;
     String datapath = "";
+
 
     private LoaderCallbackInterface mLoaderCallBack = new BaseLoaderCallback(this) {
         @Override
@@ -70,6 +72,8 @@ public class MainActivity extends Activity {
             }
         }
     };
+
+
 
     public void onResume() {
         super.onResume();
@@ -100,7 +104,7 @@ public class MainActivity extends Activity {
         mTess.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK);
         mTess.setVariable("classify_bin_numeric_mode", "1");
 
-        Button button = (Button) findViewById(R.id.take_picture);
+        /*Button button = (Button) findViewById(R.id.take_picture);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -122,11 +126,10 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 loadImagefromGallery();
             }
-        });
-
+        });*/
     }
 
-    private void loadImagefromGallery() {
+    public void loadImagefromGallery(View view) {
         Intent galleryIntent = new Intent(Intent.ACTION_PICK);
         galleryIntent.setType("image/*");
         startActivityForResult(galleryIntent, SELECT_FROM_GALLERY);
@@ -176,7 +179,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    public void takePhoto() {
+    public void takePhoto(View view) {
         Log.i("OpenCVT", "inside takephoto");
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             callCameraApp();
@@ -225,14 +228,17 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == ACTIVITY_START_CAMERA_APP && resultCode == RESULT_OK) {
             Toast.makeText(this, "Picture taken successfully!", Toast.LENGTH_SHORT).show();
+            //Snackbar.make(relativeLayout, "Picture taken successfully!", Snackbar.LENGTH_SHORT).show();
             Bitmap rawInputBitmap = BitmapFactory.decodeFile(mImageFileLocation);
             rotateBitmap(rawInputBitmap);
             imageView.setImageBitmap(inputBitmap);
         } else if (requestCode == SELECT_FROM_GALLERY && resultCode == RESULT_OK) {
+            Toast.makeText(this, "Picture loaded from gallery!", Toast.LENGTH_SHORT).show();
             try {
                 Uri imageUri = data.getData();
                 InputStream imageStream = getContentResolver().openInputStream(imageUri);
                 inputBitmap = BitmapFactory.decodeStream(imageStream);
+                imageView.setImageBitmap(inputBitmap);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -272,10 +278,368 @@ public class MainActivity extends Activity {
         inputBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 
-    public void imageProcess() {
-        Log.i("OpenCVT", "Inside Image Process");
+    public void imageProcess(View view) {
+        new ImageProcessing().execute();
+    }
+
+
+    public class ImageProcessing extends AsyncTask<Void, Void, Bitmap> {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            if(bitmap == null) {
+                Log.i("OpenCVT", "On post exec, bitmap is null");
+                return;
+            }
+            imageView.setImageBitmap(bitmap);
+        }
+
+        @Override
+        protected Bitmap doInBackground(Void... params) {
+
+            Mat inputMat = new Mat(inputBitmap.getHeight(), inputBitmap.getWidth(), CvType.CV_8UC1);
+            Utils.bitmapToMat(inputBitmap, inputMat, false);
+            Log.i("OpenCVT", "Inside Image Process");
+
+            Mat grayMat = new Mat();
+            Imgproc.cvtColor(inputMat, grayMat, Imgproc.COLOR_BGR2GRAY);
+
+            Mat blurMat = new Mat();
+            Imgproc.blur(grayMat, blurMat, new Size(1, 1));
+
+            Mat cannyEdges = new Mat();
+            Imgproc.Canny(blurMat, cannyEdges, 50, 200);
+
+            Log.i("OpenCVT", "Before HoughLines");
+            Mat lines = new Mat();
+            Imgproc.HoughLinesP(cannyEdges, lines, 1, Math.PI / 180, 150);
+
+            List<double[]> horizontalLines = new ArrayList<>();
+            List<double[]> verticalLines = new ArrayList<>();
+            List<double[]> SingleHorizontalLines = new ArrayList<>();
+            List<double[]> SingleVerticalLines = new ArrayList<>();
+
+
+            for (int i = 0; i < lines.cols(); i++) {
+                double[] line = lines.get(0, i);
+                double x1 = line[0];
+                double y1 = line[1];
+                double x2 = line[2];
+                double y2 = line[3];
+
+                if (Math.abs(y2 - y1) < Math.abs(x2 - x1)) {
+                    horizontalLines.add(line);
+                } else if (Math.abs(x2 - x1) < Math.abs(y2 - y1)) {
+                    verticalLines.add(line);
+                }
+            }
+
+            Log.i("OpenCVT", "After Hori n vert");
+            Collections.sort(verticalLines, new VerticalLinesSort());
+            Collections.sort(horizontalLines, new HorizontalLinesSort());
+            int i = 0, j;
+            for (j = 0; j < 10; j++) {
+                double smallestY = 5000, smallestX = 5000;
+                double largestY = 0, largestX = 0;
+                for (; i < verticalLines.size() - 1; i++) {
+                    double[] vert = verticalLines.get(i);
+                    double[] vertNext = verticalLines.get(i + 1);
+                    if (Math.abs(vert[0] - vertNext[0]) > 80 || Math.abs(vert[2] - vertNext[2]) > 80)
+                        break;
+                    if (vert[0] < smallestX)
+                        smallestX = vert[0];
+                    if (vert[2] < smallestX)
+                        smallestX = vert[2];
+                    if (vert[0] > largestX)
+                        largestX = vert[0];
+                    if (vert[2] > largestX)
+                        largestX = vert[2];
+                    if (vert[1] < smallestY)
+                        smallestY = vert[1];
+                    if (vert[3] < smallestY)
+                        smallestY = vert[3];
+                    if (vert[1] > largestY)
+                        largestY = vert[1];
+                    if (vert[3] > largestY)
+                        largestY = vert[3];
+                }
+                double[] toAdd = new double[4];
+                toAdd[0] = smallestX;
+                toAdd[1] = smallestY - 100;
+                toAdd[2] = largestX;
+                toAdd[3] = largestY + 100;
+                SingleVerticalLines.add(toAdd);
+                i++;
+            }
+
+            try {
+                Log.i("OpenCVT", "Thread sleeping");
+                Thread.sleep(10000);
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+
+            int ii = 0, jj;
+            for (jj = 0; jj < 10; jj++) {
+                double smallestY = 5000, smallestX = 5000;
+                double largestY = 0, largestX = 0;
+                for (; ii < horizontalLines.size() - 1; ii++) {
+                    double[] vert = horizontalLines.get(ii);
+                    double[] vertNext = horizontalLines.get(ii + 1);
+                    if (Math.abs(vert[1] - vertNext[1]) > 80 || Math.abs(vert[3] - vertNext[3]) > 80)
+                        break;
+                    if (vert[0] < smallestX)
+                        smallestX = vert[0];
+                    if (vert[2] < smallestX)
+                        smallestX = vert[2];
+                    if (vert[0] > largestX)
+                        largestX = vert[0];
+                    if (vert[2] > largestX)
+                        largestX = vert[2];
+                    if (vert[1] < smallestY)
+                        smallestY = vert[1];
+                    if (vert[3] < smallestY)
+                        smallestY = vert[3];
+                    if (vert[1] > largestY)
+                        largestY = vert[1];
+                    if (vert[3] > largestY)
+                        largestY = vert[3];
+                }
+                double[] toAdd = new double[4];
+                toAdd[0] = smallestX - 100;
+                toAdd[1] = smallestY;
+                toAdd[2] = largestX + 100;
+                toAdd[3] = largestY;
+                SingleHorizontalLines.add(toAdd);
+                ii++;
+            }
+
+            Log.i("OpenCVT", "After Cacl  " + SingleVerticalLines.size() + SingleHorizontalLines.size());
+
+
+            List<Point> intersectionPoints = new ArrayList<>();
+            for (double[] hort : SingleHorizontalLines)
+                for (double[] vert : SingleVerticalLines) {
+                    Point p = LineOperations.LineIntersection(new Point(hort[0], hort[1]), new Point(hort[2], hort[3]), new Point(vert[0], vert[1]), new Point(vert[2], vert[3]));
+                    intersectionPoints.add(p);
+                }
+
+            Log.i("OpenCVT", "After circles.");
+            List<Rect> sudokuTiles = new ArrayList<>();
+            for (int a = 0; a < 89; a++) {
+                if (a == 9 || a == 19 || a == 29 || a == 39 || a == 49 || a == 59 || a == 69 || a == 79)
+                    continue;
+                Point p = intersectionPoints.get(a);
+                Point pRight = intersectionPoints.get(a + 1);
+                Point pBelow = intersectionPoints.get(a + 10);
+                Point p2 = new Point();
+                double height, width;
+                height = pBelow.y - p.y;
+                width = pRight.x - p.x;
+                p.x = p.x + (width * 0.18);
+                p.y = p.y + (height * 0.18);
+
+                p2.x = p.x + (width * 0.64);
+                p2.y = p.y + (height * 0.64);
+
+                Rect r = new Rect(new Point(p.x, p.y), new Point(p2.x, p2.y));
+                Core.rectangle(inputMat, p, p2, new Scalar(255, 0, 0), 6);
+                sudokuTiles.add(r);
+            }
+
+
+            String firstIt[] = new String[81];
+            String secIt[] = new String[81];
+            String thirdIt[] = new String[81];
+            String fourthIt[] = new String[81];
+            String fifthIt[] = new String[81];
+            int finalNos[] = new int[81];
+            int sudoku[][] = new int[9][9];
+
+            for (int index = 0; index < sudokuTiles.size(); index++) {
+                Rect r = sudokuTiles.get(index);
+                Mat sudokuTileMat = new Mat(grayMat, r);
+                Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
+                Mat threshSudokuTileMat = new Mat();
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
+
+                String OCRResult = null;
+                mTess.setImage(sudokuTileBitmap);
+                OCRResult = mTess.getUTF8Text();
+                if (OCRResult.length() == 1) {
+                    firstIt[index] = OCRResult;
+                } else {
+                    firstIt[index] = "0";
+                }
+                mTess.clear();
+            }
+
+            Log.i("OpenCVT", "After 1st Tess");
+
+            for (int index = 0; index < sudokuTiles.size(); index++) {
+                Rect r = sudokuTiles.get(index);
+                r.x = r.x + 1;
+                r.y = r.y + 1;
+                r.height = r.height - 1;
+                r.width = r.width - 1;
+                Mat sudokuTileMat = new Mat(grayMat, r);
+                Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
+                Mat threshSudokuTileMat = new Mat();
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
+
+                String OCRResult = null;
+                mTess.setImage(sudokuTileBitmap);
+                OCRResult = mTess.getUTF8Text();
+                if (OCRResult.length() == 1) {
+                    secIt[index] = OCRResult;
+                } else {
+                    secIt[index] = "0";
+                }
+
+                mTess.clear();
+            }
+
+            Log.i("OpenCVT", "2nd tess");
+
+            for (int index = 0; index < sudokuTiles.size(); index++) {
+                Rect r = sudokuTiles.get(index);
+                r.x = r.x - 1;
+                r.y = r.y - 1;
+                r.height = r.height + 1;
+                r.width = r.width + 1;
+                Mat sudokuTileMat = new Mat(grayMat, r);
+                Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
+                Mat threshSudokuTileMat = new Mat();
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
+
+                String OCRResult = null;
+                mTess.setImage(sudokuTileBitmap);
+                OCRResult = mTess.getUTF8Text();
+                if (OCRResult.length() == 1) {
+                    thirdIt[index] = OCRResult;
+                } else {
+                    thirdIt[index] = "0";
+                }
+
+                mTess.clear();
+            }
+
+            Log.i("OpenCVT", "3rd tess");
+
+            for (int index = 0; index < sudokuTiles.size(); index++) {
+                Rect r = sudokuTiles.get(index);
+                r.x = r.x + 2;
+                r.y = r.y + 2;
+                r.height = r.height - 2;
+                r.width = r.width - 2;
+                Mat sudokuTileMat = new Mat(grayMat, r);
+                Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
+                Mat threshSudokuTileMat = new Mat();
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
+
+                String OCRResult = null;
+                mTess.setImage(sudokuTileBitmap);
+                OCRResult = mTess.getUTF8Text();
+                if (OCRResult.length() == 1) {
+                    fourthIt[index] = OCRResult;
+                } else {
+                    fourthIt[index] = "0";
+                }
+
+                mTess.clear();
+            }
+
+            Log.i("OpenCVT", "4th tess");
+
+            for (int index = 0; index < sudokuTiles.size(); index++) {
+                Rect r = sudokuTiles.get(index);
+                r.x = r.x - 2;
+                r.y = r.y - 2;
+                r.height = r.height - 2;
+                r.width = r.width - 2;
+                Mat sudokuTileMat = new Mat(grayMat, r);
+                Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
+                Mat threshSudokuTileMat = new Mat();
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
+
+                String OCRResult = null;
+                mTess.setImage(sudokuTileBitmap);
+                OCRResult = mTess.getUTF8Text();
+                if (OCRResult.length() == 1) {
+                    fifthIt[index] = OCRResult;
+                } else {
+                    fifthIt[index] = "0";
+                }
+
+                mTess.clear();
+            }
+
+            Log.i("OpenCVT", "5th tess");
+
+            int s = 0, t = 0;
+            for (int x = 0; x < 81; x++) {
+                int count[] = new int[10];
+                for (int y = 0; y < 10; y++)
+                    count[y] = 0;
+
+                count[Integer.parseInt(firstIt[x])]++;
+                count[Integer.parseInt(secIt[x])]++;
+                count[Integer.parseInt(thirdIt[x])]++;
+                count[Integer.parseInt(fourthIt[x])]++;
+                count[Integer.parseInt(fifthIt[x])]++;
+
+                int max = 0, mNo = 0;
+                for (int z = 0; z < 10; z++) {
+                    if (count[z] > max) {
+                        max = count[z];
+                        mNo = z;
+                    }
+                }
+                finalNos[x] = mNo;
+
+                if (x == 9 || x == 18 || x == 27 || x == 36 || x == 45 || x == 54 || x == 63 || x == 72) {
+                    t = 0;
+                    s++;
+                }
+                sudoku[s][t] = finalNos[x];
+                t++;
+            }
+
+            int x = 0;
+            for (Rect r : sudokuTiles) {
+                if (finalNos[x] != 0)
+                    Core.putText(inputMat, Integer.toString(finalNos[x]), new Point(r.x, r.y), 1, 10.0f, new Scalar(0, 255, 0), 8);
+                x++;
+            }
+
+            Bitmap tempBitmap = Bitmap.createBitmap(inputMat.cols(), inputMat.rows(), Bitmap.Config.RGB_565);
+            Utils.matToBitmap(inputMat, tempBitmap);
+            //imageView.setImageBitmap(tempBitmap);
+            Log.i("OpenCVT", "End!");
+            return tempBitmap;
+        }
+    }
+
+
+    /*public void imageProcess(View view) {
+
         Mat inputMat = new Mat(inputBitmap.getHeight(), inputBitmap.getWidth(), CvType.CV_8UC1);
         Utils.bitmapToMat(inputBitmap, inputMat, false);
+        Log.i("OpenCVT", "Inside Image Process");
 
         Mat grayMat = new Mat();
         Imgproc.cvtColor(inputMat, grayMat, Imgproc.COLOR_BGR2GRAY);
@@ -346,6 +710,13 @@ public class MainActivity extends Activity {
             toAdd[3] = largestY + 100;
             SingleVerticalLines.add(toAdd);
             i++;
+        }
+
+        try {
+            Thread.sleep(10000);
+            Log.i("OpenCVT", "Thread sleeping");
+        } catch(Exception e) {
+            e.printStackTrace();
         }
 
         int ii = 0, jj;
@@ -591,18 +962,10 @@ public class MainActivity extends Activity {
             x++;
         }
 
-        for (int a = 0; a < 9; a++) {
-            for (int b = 0; b < 9; b++) {
-                Log.i("OpenCVT", " " + sudoku[a][b]);
-            }
-            Log.i("OpenCVT", "next row");
-
-        }
-
         Bitmap tempBitmap = Bitmap.createBitmap(inputMat.cols(), inputMat.rows(), Bitmap.Config.RGB_565);
         Utils.matToBitmap(inputMat, tempBitmap);
         imageView.setImageBitmap(tempBitmap);
         Log.i("OpenCVT", "End!");
-    }
+    }*/
 
 }

@@ -10,6 +10,10 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters "armeabi-v7a", "x86", "armeabi", "mips"
+        }
+
     }
     buildTypes {
         release {
@@ -30,4 +34,7 @@ dependencies {
     compile project(':openCVLibrary24133')
     compile 'com.rmtheis:tess-two:8.0.0'
     compile "com.android.support:appcompat-v7:25.3.1"
+    compile 'com.github.clans:fab:1.6.4'
+    compile 'com.android.support:design:25.3.1'
 }
+
