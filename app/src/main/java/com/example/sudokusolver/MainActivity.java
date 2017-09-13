@@ -965,7 +965,7 @@ public class MainActivity extends Activity {
         Bitmap tempBitmap = Bitmap.createBitmap(inputMat.cols(), inputMat.rows(), Bitmap.Config.RGB_565);
         Utils.matToBitmap(inputMat, tempBitmap);
         imageView.setImageBitmap(tempBitmap);
-        Log.i("OpenCVT", "End!!");
+        Log.i("OpenCVT", "End!!!");
     }*/
 
 }
