@@ -1,10 +1,8 @@
 package com.example.sudokusolver;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,9 +15,6 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.MediaStore;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.FileProvider;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -27,6 +22,8 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
+import com.theartofdev.edmodo.cropper.CropImage;
+import com.theartofdev.edmodo.cropper.CropImageView;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -133,10 +130,17 @@ public class MainActivity extends Activity {
         });*/
     }
 
+
     public void loadImagefromGallery(View view) {
         Intent galleryIntent = new Intent(Intent.ACTION_PICK);
         galleryIntent.setType("image/*");
         startActivityForResult(galleryIntent, SELECT_FROM_GALLERY);
+    }
+
+    public void loadGeneric(View view) {
+        CropImage.activity()
+                .setGuidelines(CropImageView.Guidelines.ON)
+                .start(this);
     }
 
     private void checkFile(File dir) {
@@ -183,7 +187,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    public void takePhoto(View view) {
+    /*public void takePhoto(View view) {
         Log.i("OpenCVT", "inside takephoto");
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             callCameraApp();
@@ -226,11 +230,11 @@ public class MainActivity extends Activity {
 
 //        callCameraApplicationIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
         startActivityForResult(callCameraApplicationIntent, ACTIVITY_START_CAMERA_APP);
-    }
+    }*/
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == ACTIVITY_START_CAMERA_APP && resultCode == RESULT_OK) {
+        /*if (requestCode == ACTIVITY_START_CAMERA_APP && resultCode == RESULT_OK) {
             Toast.makeText(this, "Picture taken successfully!", Toast.LENGTH_SHORT).show();
             //Snackbar.make(relativeLayout, "Picture taken successfully!", Snackbar.LENGTH_SHORT).show();
             Bitmap rawInputBitmap = BitmapFactory.decodeFile(mImageFileLocation);
@@ -245,6 +249,22 @@ public class MainActivity extends Activity {
                 imageView.setImageBitmap(inputBitmap);
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        } else*/ if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
+            CropImage.ActivityResult result = CropImage.getActivityResult(data);
+            if (resultCode == RESULT_OK) {
+                try {
+                    Uri resultUri = result.getUri();
+                    InputStream imageStream = getContentResolver().openInputStream(resultUri);
+                    inputBitmap = BitmapFactory.decodeStream(imageStream);
+                    imageView.setImageBitmap(inputBitmap);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+            } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
+                Exception error = result.getError();
+                Log.i("OpenCVT", "Error = " + error.getMessage());
             }
         }
     }
@@ -300,12 +320,6 @@ public class MainActivity extends Activity {
             progressDialog.setTitle("Processing...");
             progressDialog.setCancelable(false);
             progressDialog.show();
-        }
-
-
-        @Override
-        protected void onProgressUpdate(Integer... values) {
-            //progressDialog.incrementProgressBy(values[0]);
         }
 
         @Override
@@ -645,7 +659,7 @@ public class MainActivity extends Activity {
             Bitmap tempBitmap = Bitmap.createBitmap(inputMat.cols(), inputMat.rows(), Bitmap.Config.RGB_565);
             Utils.matToBitmap(inputMat, tempBitmap);
 
-            tempBitmap = tempBitmap.copy(Bitmap.Config.ARGB_8888, true);
+            tempBitmap = tempBitmap.copy(Bitmap.Config.RGB_565, true);
             Canvas canvas = new Canvas(tempBitmap);
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             // text color - #3D3D3D
