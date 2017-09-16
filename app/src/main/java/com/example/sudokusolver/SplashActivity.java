@@ -12,6 +12,7 @@ import android.view.WindowManager;
 
 public class SplashActivity extends Activity {
     private static int SPLASH_TIME_OUT = 2000;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -26,5 +27,6 @@ public class SplashActivity extends Activity {
                 finish();
             }
         }, SPLASH_TIME_OUT);
+
     }
 }

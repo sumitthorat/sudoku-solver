@@ -38,6 +38,7 @@ dependencies {
     compile 'com.android.support:design:26.0.1'
     compile 'com.github.d-max:spots-dialog:0.7@aar'
     compile 'com.theartofdev.edmodo:android-image-cropper:2.5.+'
+    compile 'com.github.johnpersano:supertoasts:2.0'
 }
 
 configurations.all {

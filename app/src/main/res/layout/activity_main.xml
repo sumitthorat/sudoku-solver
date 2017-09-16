@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/image_view"
-        android:background="#ffffff"/>
+        android:background="@drawable/bg2"/>
 
     <!--
     <Button
@@ -128,6 +128,15 @@
             fab:fab_size="mini"
             fab:fab_label="Load Image"
             android:onClick="loadGeneric"/>
+
+        <com.github.clans.fab.FloatingActionButton
+            android:id="@+id/about_app"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/icons8_about"
+            fab:fab_size="mini"
+            fab:fab_label="About App"
+            />
 
     </com.github.clans.fab.FloatingActionMenu>
 

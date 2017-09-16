@@ -8,19 +8,19 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
-import android.widget.Toast;
 
+import com.github.johnpersano.supertoasts.library.Style;
+import com.github.johnpersano.supertoasts.library.SuperActivityToast;
+import com.github.johnpersano.supertoasts.library.utils.PaletteUtils;
 import com.googlecode.tesseract.android.TessBaseAPI;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
@@ -42,10 +42,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import dmax.dialog.SpotsDialog;
@@ -99,6 +97,8 @@ public class MainActivity extends Activity {
         mTess = new TessBaseAPI();
 
         checkFile(new File(datapath + "tessdata/"));
+        SplashActivity splashActivity = new SplashActivity();
+
 
         mTess.init(datapath, language);
         mTess.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "123456789");
@@ -269,7 +269,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    File createImageFile() throws IOException {
+    /*File createImageFile() throws IOException {
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "IMAGE" + timestamp + "_";
         File storageDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
@@ -300,14 +300,30 @@ public class MainActivity extends Activity {
             default:
         }
         inputBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-    }
+    }*/
 
     public void imageProcess(View view) {
         if(inputBitmap != null)
             new ImageProcessing().execute();
         else
-            Toast.makeText(this, "You need to load an image first!", Toast.LENGTH_SHORT).show();
+            SuperActivityToast.create(this, new Style(), Style.TYPE_BUTTON)
+                    .setButtonText("OK")
+                    .setButtonIconResource(R.drawable.icons8_ok)
+                    .setOnButtonClickListener("good_tag_name", null, new SuperActivityToast.OnButtonClickListener() {
+                        @Override
+                        public void onClick(View view, Parcelable token) {
+                            loadGeneric(view);
+                        }
+                    })
+                    .setProgressBarColor(Color.WHITE)
+                    .setText("You need to load an image first.")
+                    .setDuration(Style.DURATION_MEDIUM)
+                    .setFrame(Style.FRAME_LOLLIPOP)
+                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_BLUE_GREY))
+                    .setAnimations(Style.ANIMATIONS_POP).show();
     }
+
+
 
 
     public class ImageProcessing extends AsyncTask<Void, Integer, Bitmap> {
@@ -315,7 +331,6 @@ public class MainActivity extends Activity {
 
         @Override
         protected void onPreExecute() {
-            //super.onPreExecute();
             progressDialog = new SpotsDialog(MainActivity.this, R.style.CustomProgressDialog);
             progressDialog.setTitle("Processing...");
             progressDialog.setCancelable(false);
@@ -334,7 +349,6 @@ public class MainActivity extends Activity {
 
         @Override
         protected Bitmap doInBackground(Void... params) {
-
             Mat inputMat = new Mat(inputBitmap.getHeight(), inputBitmap.getWidth(), CvType.CV_8UC1);
             Utils.bitmapToMat(inputBitmap, inputMat, false);
             Log.i("OpenCVT", "Inside Image Process");
@@ -650,7 +664,7 @@ public class MainActivity extends Activity {
 
 
             try {
-                Thread.sleep(500);
+                Thread.sleep(300);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -662,13 +676,9 @@ public class MainActivity extends Activity {
             tempBitmap = tempBitmap.copy(Bitmap.Config.RGB_565, true);
             Canvas canvas = new Canvas(tempBitmap);
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            // text color - #3D3D3D
             paint.setColor(Color.rgb(255, 0, 0));
-            // text size in pixels
-            //paint.setTextSize((int) (14 * scale));
-            // text shadow
             paint.setShadowLayer(1f, 0f, 1f, Color.BLACK);
-            //imageView.setImageBitmap(tempBitmap);
+
             s = 0;
             t = 0;
             for (int y = 0; y < 81; y++) {
