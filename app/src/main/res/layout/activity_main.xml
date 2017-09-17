@@ -16,46 +16,16 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/image_view"
-        android:background="@drawable/bg2"/>
-
-    <!--
-    <Button
-        android:id="@+id/take_picture"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="Open Camera"
-        android:background="@android:color/holo_orange_light"
-        android:textColor="@android:color/white"/>
-
-    <Button
-        android:id="@+id/load_gallery"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="Load from Gallery"
-        android:background="@android:color/holo_green_light"
-        android:textColor="@android:color/white" />
-
-    <Button
-        android:id="@+id/process_image"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="Start processing"
-        android:background="@android:color/holo_blue_light"
-        android:textColor="@android:color/white" />      -->
+        android:background="@drawable/bg3"/>
 
 
     <com.github.clans.fab.FloatingActionMenu
-        android:id="@+id/menu"
+        android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentRight="true"
-        android:layout_marginRight="10dp"
-        android:layout_marginBottom="10dp"
-        android:layout_marginLeft="10dp"
+        android:layout_margin="16dp"
         fab:menu_fab_size="normal"
         fab:menu_showShadow="true"
         fab:menu_shadowColor="#66000000"
@@ -93,7 +63,8 @@
         fab:menu_fab_show_animation="@anim/fab_scale_up"
         fab:menu_fab_hide_animation="@anim/fab_scale_down">
 
-        <!--<com.github.clans.fab.FloatingActionButton
+        <!--
+        <com.github.clans.fab.FloatingActionButton
             android:id="@+id/open_gallery"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -109,7 +80,7 @@
             android:src="@drawable/icons8_camera"
             fab:fab_size="mini"
             fab:fab_label="Open Camera"
-            android:onClick="takePhoto"/> -->
+            android:onClick="takePhoto"/>  -->
 
         <com.github.clans.fab.FloatingActionButton
             android:id="@+id/process_image"
@@ -130,13 +101,13 @@
             android:onClick="loadGeneric"/>
 
         <com.github.clans.fab.FloatingActionButton
-            android:id="@+id/about_app"
+            android:id="@+id/rotate_image"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:src="@drawable/icons8_about"
+            android:src="@drawable/icons8_rotate"
             fab:fab_size="mini"
-            fab:fab_label="About App"
-            />
+            fab:fab_label="Rotate"
+            android:onClick="rotateImage" />
 
     </com.github.clans.fab.FloatingActionMenu>
 

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Sudoku Solver</string>
+    <string name="crop_image_activity_title">Crop Sudoku</string>
+    <string name="crop_image_menu_crop">Crop</string>
 </resources>

@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -17,13 +18,13 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.github.johnpersano.supertoasts.library.Style;
 import com.github.johnpersano.supertoasts.library.SuperActivityToast;
 import com.github.johnpersano.supertoasts.library.utils.PaletteUtils;
 import com.googlecode.tesseract.android.TessBaseAPI;
 import com.theartofdev.edmodo.cropper.CropImage;
-import com.theartofdev.edmodo.cropper.CropImageView;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -53,7 +54,7 @@ public class MainActivity extends Activity {
 
     ImageView imageView;
     Bitmap inputBitmap = null;
-    private static final int ACTIVITY_START_CAMERA_APP = 0, REQUEST_EXT_STORAGE = 1, SELECT_FROM_GALLERY = 2;
+    private static final int ACTIVITY_START_CAMERA_APP = 0, REQUEST_EXT_STORAGE = 1, SELECT_FROM_GALLERY = 2, LOAD_IMAGE = 3;
     private String mImageFileLocation;
     private TessBaseAPI mTess;
     String datapath = "";
@@ -97,13 +98,12 @@ public class MainActivity extends Activity {
         mTess = new TessBaseAPI();
 
         checkFile(new File(datapath + "tessdata/"));
-        SplashActivity splashActivity = new SplashActivity();
-
 
         mTess.init(datapath, language);
         mTess.setVariable(TessBaseAPI.VAR_CHAR_WHITELIST, "123456789");
         mTess.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK);
         mTess.setVariable("classify_bin_numeric_mode", "1");
+        Intent intent = getIntent();
 
         /*Button button = (Button) findViewById(R.id.take_picture);
         button.setOnClickListener(new View.OnClickListener() {
@@ -138,9 +138,11 @@ public class MainActivity extends Activity {
     }
 
     public void loadGeneric(View view) {
-        CropImage.activity()
+        /*CropImage.activity()
                 .setGuidelines(CropImageView.Guidelines.ON)
-                .start(this);
+                .start(this);*/
+        Intent intent = new Intent(this, CustomCropActivity.class);
+        startActivityForResult(intent, 10);
     }
 
     private void checkFile(File dir) {
@@ -158,6 +160,7 @@ public class MainActivity extends Activity {
     }
 
     private void copyFiles() {
+        Log.i("OpenCVT", "copyFiles called from MainActivity");
         try {
             String filepath = datapath + "/tessdata/eng.traineddata";
             AssetManager assetManager = getAssets();
@@ -184,6 +187,31 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void rotateImage(View view) {
+        if(inputBitmap != null) {
+            Matrix matrix = new Matrix();
+            matrix.setRotate(90);
+            inputBitmap = Bitmap.createBitmap(inputBitmap, 0, 0, inputBitmap.getWidth(), inputBitmap.getHeight(), matrix, true);
+            imageView.setImageBitmap(inputBitmap);
+        } else {
+            SuperActivityToast.create(this, new Style(), Style.TYPE_BUTTON)
+                    .setButtonText("LOAD NOW")
+                    .setButtonIconResource(R.drawable.icons8_ok)
+                    .setOnButtonClickListener("good_tag_name", null, new SuperActivityToast.OnButtonClickListener() {
+                        @Override
+                        public void onClick(View view, Parcelable token) {
+                            loadGeneric(view);
+                        }
+                    })
+                    .setProgressBarColor(Color.WHITE)
+                    .setText("You need to load an image first.")
+                    .setDuration(Style.DURATION_MEDIUM)
+                    .setFrame(Style.FRAME_LOLLIPOP)
+                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_BLUE_GREY))
+                    .setAnimations(Style.ANIMATIONS_POP).show();
         }
     }
 
@@ -240,7 +268,8 @@ public class MainActivity extends Activity {
             Bitmap rawInputBitmap = BitmapFactory.decodeFile(mImageFileLocation);
             rotateBitmap(rawInputBitmap);
             imageView.setImageBitmap(inputBitmap);
-        } else if (requestCode == SELECT_FROM_GALLERY && resultCode == RESULT_OK) {
+        } else*/
+        if (requestCode == SELECT_FROM_GALLERY && resultCode == RESULT_OK) {
             Toast.makeText(this, "Picture loaded from gallery!", Toast.LENGTH_SHORT).show();
             try {
                 Uri imageUri = data.getData();
@@ -250,7 +279,7 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        } else*/ if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
+        } else if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
             CropImage.ActivityResult result = CropImage.getActivityResult(data);
             if (resultCode == RESULT_OK) {
                 try {
@@ -266,6 +295,16 @@ public class MainActivity extends Activity {
                 Exception error = result.getError();
                 Log.i("OpenCVT", "Error = " + error.getMessage());
             }
+        } else if(resultCode == RESULT_OK && requestCode == 10) {
+            try {
+                Uri inputUri = data.getData();
+                Log.i("OpenCVT", "input URI : " + inputUri.toString());
+                InputStream imageStream = getContentResolver().openInputStream(inputUri);
+                inputBitmap = BitmapFactory.decodeStream(imageStream);
+                imageView.setImageBitmap(inputBitmap);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -276,38 +315,15 @@ public class MainActivity extends Activity {
         File image = File.createTempFile(imageFileName, ".jpg", storageDirectory);
         mImageFileLocation = image.getAbsolutePath();
         return image;
-    }
-
-    private void rotateBitmap(Bitmap bitmap) {
-        ExifInterface exifInterface = null;
-        try {
-            exifInterface = new ExifInterface(mImageFileLocation);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
-        Matrix matrix = new Matrix();
-        switch (orientation) {
-            case ExifInterface.ORIENTATION_ROTATE_90:
-                matrix.setRotate(90);
-                break;
-
-            case ExifInterface.ORIENTATION_ROTATE_180:
-                matrix.setRotate(180);
-                break;
-
-            default:
-        }
-        inputBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }*/
+
 
     public void imageProcess(View view) {
         if(inputBitmap != null)
             new ImageProcessing().execute();
         else
             SuperActivityToast.create(this, new Style(), Style.TYPE_BUTTON)
-                    .setButtonText("OK")
+                    .setButtonText("LOAD NOW")
                     .setButtonIconResource(R.drawable.icons8_ok)
                     .setOnButtonClickListener("good_tag_name", null, new SuperActivityToast.OnButtonClickListener() {
                         @Override
@@ -334,7 +350,11 @@ public class MainActivity extends Activity {
             progressDialog = new SpotsDialog(MainActivity.this, R.style.CustomProgressDialog);
             progressDialog.setTitle("Processing...");
             progressDialog.setCancelable(false);
-            progressDialog.show();
+            try {
+                progressDialog.show();
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
@@ -491,7 +511,7 @@ public class MainActivity extends Activity {
                 sudokuTiles.add(r);
             }
 
-            Log.i("OpenCVT", "After inter.");
+            Log.i("OpenCVT", "After Rectangles." + sudokuTiles.size());
             String firstIt[] = new String[81];
             String secIt[] = new String[81];
             String thirdIt[] = new String[81];
@@ -682,7 +702,7 @@ public class MainActivity extends Activity {
             s = 0;
             t = 0;
             for (int y = 0; y < 81; y++) {
-                Log.i("OpenCVT", " s = " + s + " t = " + t + "y = " + y);
+                //Log.i("OpenCVT", " s = " + s + " t = " + t + "y = " + y);
                 if (y == 9 || y == 18 || y == 27 || y == 36 || y == 45 || y == 54 || y == 63 || y == 72) {
                     t = 0;
                     s++;

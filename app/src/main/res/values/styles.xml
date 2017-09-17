@@ -12,5 +12,12 @@
         <item name="DialogSpotCount">4</item>
     </style>
 
+    <style name="MyTheme" parent="@style/Theme.AppCompat">
+        <item name="colorPrimary">#e6ee9c</item>
+        <item name="titleTextColor">#263238</item>
+        <item name="actionMenuTextColor">#263238</item>
+        <item name="android:textColorPrimary">#263238</item>
+    </style>
+
 </resources>
 
