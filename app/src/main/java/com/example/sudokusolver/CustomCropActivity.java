@@ -1,6 +1,7 @@
 package com.example.sudokusolver;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -8,8 +9,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -21,6 +24,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.github.johnpersano.supertoasts.library.Style;
+import com.github.johnpersano.supertoasts.library.SuperActivityToast;
+import com.github.johnpersano.supertoasts.library.utils.PaletteUtils;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
 import java.io.File;
@@ -31,28 +37,36 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import static android.content.ContentValues.TAG;
-
 /**
  * Created by sumit on 17/09/17.
  */
 
-public class CustomCropActivity extends Activity{
-    Bitmap inputBitmap;
+public class CustomCropActivity extends Activity {
+    /*Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            Log.i(TAG, "Inside Handler");
+           cropped =  cropImageView.getCroppedImage();
+            Log.i(TAG, "Inside Handler2");
+        }
+    };*/
+    Bitmap inputBitmap, cropped;
     CropImageView cropImageView;
-    private String mImageFileLocation;
+    private String mImageFileLocation, TAG = "OpenCVT";
     private final int SELECT_FROM_GALLERY = 1, REQUEST_EXT_STORAGE = 2, ACTIVITY_START_CAMERA_APP = 3;
+    Thread thread;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_custom_crop);
         cropImageView = (CropImageView) findViewById(R.id.cropImageView);
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Select Source :  ");
+        builder.setTitle("SELECT SOURCE");
         builder.setPositiveButton("GALLERY", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                        loadImageFromGallery();
+                loadImageFromGallery();
             }
         });
 
@@ -71,6 +85,7 @@ public class CustomCropActivity extends Activity{
         startActivityForResult(galleryIntent, SELECT_FROM_GALLERY);
     }
 
+    @TargetApi(Build.VERSION_CODES.M)
     public void takePhoto() {
         Log.i("OpenCVT", "inside takephoto");
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
@@ -111,8 +126,6 @@ public class CustomCropActivity extends Activity{
         String authorities = getApplicationContext().getPackageName() + ".fileprovider";
         Uri imageUri = FileProvider.getUriForFile(this, authorities, photoFile);
         callCameraApplicationIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-
-//        callCameraApplicationIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
         startActivityForResult(callCameraApplicationIntent, ACTIVITY_START_CAMERA_APP);
     }
 
@@ -150,28 +163,41 @@ public class CustomCropActivity extends Activity{
 
             default:
         }
-        inputBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        Bitmap rawInputBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        inputBitmap = Bitmap.createScaledBitmap(rawInputBitmap, (int)(bitmap.getWidth() * 0.9), (int) (bitmap.getHeight() * 0.9), false);
+        rawInputBitmap.recycle();
     }
 
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == SELECT_FROM_GALLERY && resultCode == RESULT_OK) {
-            Toast.makeText(this, "Picture loaded from gallery!", Toast.LENGTH_SHORT).show();
+            SuperActivityToast.create(this, new Style(), Style.TYPE_STANDARD)
+                    .setProgressBarColor(Color.WHITE)
+                    .setText("Picture loaded from gallery!")
+                    .setDuration(Style.DURATION_SHORT)
+                    .setFrame(Style.FRAME_LOLLIPOP)
+                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_BLUE_GREY))
+                    .setAnimations(Style.ANIMATIONS_POP).show();
             try {
                 Uri imageUri = data.getData();
                 InputStream imageStream = getContentResolver().openInputStream(imageUri);
-                Bitmap inputBitmap = BitmapFactory.decodeStream(imageStream);
-                //rotateBitmap(rawInputBitmap);
-                //imageView.setImageBitmap(inputBitmap);
-                if(inputBitmap == null)
+                Bitmap rawInputBitmap = BitmapFactory.decodeStream(imageStream);
+                inputBitmap = Bitmap.createScaledBitmap(rawInputBitmap, (int)(rawInputBitmap.getWidth() * 0.9), (int) (rawInputBitmap.getHeight() * 0.9), false);
+                if (inputBitmap == null)
                     Log.i("OpenCVT", "Null bitmap");
                 cropImageView.setImageBitmap(inputBitmap);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         } else if (requestCode == ACTIVITY_START_CAMERA_APP && resultCode == RESULT_OK) {
-            Toast.makeText(this, "Picture taken successfully!", Toast.LENGTH_SHORT).show();
+            SuperActivityToast.create(this, new Style(), Style.TYPE_STANDARD)
+                    .setProgressBarColor(Color.WHITE)
+                    .setText("Picture taken from camera!")
+                    .setDuration(Style.DURATION_SHORT)
+                    .setFrame(Style.FRAME_LOLLIPOP)
+                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_BLUE_GREY))
+                    .setAnimations(Style.ANIMATIONS_POP).show();
             Bitmap rawInputBitmap = BitmapFactory.decodeFile(mImageFileLocation);
             rotateBitmap(rawInputBitmap);
             cropImageView.setImageBitmap(inputBitmap);
@@ -179,38 +205,29 @@ public class CustomCropActivity extends Activity{
     }
 
 
-
-    private  File getOutputMediaFile(){
-        // To be safe, you should check that the SDCard is mounted
-        // using Environment.getExternalStorageState() before doing this.
+    private File getOutputMediaFile() {
         File mediaStorageDir = new File(Environment.getExternalStorageDirectory()
                 + "/Android/data/"
                 + getApplicationContext().getPackageName()
                 + "/Files");
-
-        // This location works best if you want the created images to be shared
-        // between applications and persist after your app has been uninstalled.
-
-        // Create the storage directory if it does not exist
-        if (! mediaStorageDir.exists()){
-            if (! mediaStorageDir.mkdirs()){
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
                 return null;
             }
         }
-        // Create a media file name
         String timeStamp = new SimpleDateFormat("ddMMyyyy_HHmm").format(new Date());
         File mediaFile;
-        String mImageName="MI_"+ timeStamp +".jpg";
+        String mImageName = "MI_" + timeStamp + ".jpg";
         mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
         return mediaFile;
     }
 
     public void cropImage(View view) {
-        Bitmap cropped = cropImageView.getCroppedImage();
+        cropped = cropImageView.getCroppedImage();
         File pictureFile = getOutputMediaFile();
         if (pictureFile == null) {
             Log.d(TAG,
-                    "Error creating media file, check storage permissions: ");// e.getMessage());
+                    "Error creating media file, check storage permissions: ");
             return;
         }
         try {

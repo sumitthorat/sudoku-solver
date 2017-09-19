@@ -5,7 +5,7 @@
         <!-- Customize your theme here. -->
     </style>
 
-    <style name="CustomProgressDialog" parent="android:Theme.DeviceDefault.Light.Dialog">
+    <style name="CustomProgressDialog" parent="android:Theme.DeviceDefault.Dialog">
         <item name="DialogTitleAppearance">@android:style/TextAppearance.Medium</item>
         <item name="DialogTitleText">Processing...</item>
         <item name="DialogSpotColor">@android:color/holo_orange_dark</item>
