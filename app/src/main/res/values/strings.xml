@@ -2,4 +2,8 @@
     <string name="app_name">Sudoku Solver</string>
     <string name="crop_image_activity_title">Crop Sudoku</string>
     <string name="crop_image_menu_crop">Crop</string>
+    <string name="load_image">Load Image</string>
+    <string name="start_processing">Start Processing</string>
+    <string name="start_processing_sub">Start processing of the image</string>
+    <string name="load_image_sub">Load an Image from Gallery or Camera</string>
 </resources>

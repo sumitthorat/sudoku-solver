@@ -12,9 +12,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -23,7 +23,6 @@ import android.os.Environment;
 import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
-import android.support.media.ExifInterface;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.util.Log;
@@ -36,12 +35,16 @@ import com.github.johnpersano.supertoasts.library.Style;
 import com.github.johnpersano.supertoasts.library.SuperActivityToast;
 import com.github.johnpersano.supertoasts.library.utils.PaletteUtils;
 import com.googlecode.tesseract.android.TessBaseAPI;
+import com.nightonke.boommenu.BoomButtons.ButtonPlaceEnum;
+import com.nightonke.boommenu.BoomButtons.OnBMClickListener;
+import com.nightonke.boommenu.BoomButtons.TextInsideCircleButton;
+import com.nightonke.boommenu.BoomMenuButton;
+import com.nightonke.boommenu.ButtonEnum;
+import com.nightonke.boommenu.Piece.PiecePlaceEnum;
+import com.rw.imaging.ImagingUtils;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.yalantis.ucrop.UCrop;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -61,6 +64,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import dmax.dialog.SpotsDialog;
 
@@ -68,32 +72,18 @@ import dmax.dialog.SpotsDialog;
 public class MainActivity extends Activity {
 
     ImageView imageView;
+    boolean answerFound ;
     AlertDialog progressDialog = null;
     Bitmap inputBitmap = null;
     private static final int ACTIVITY_START_CAMERA_APP = 0, REQUEST_EXT_STORAGE = 1, SELECT_FROM_GALLERY = 2, LOAD_IMAGE = 3;
     private String mImageFileLocation;
     private TessBaseAPI mTess;
     String datapath = "";
-
-
-    private LoaderCallbackInterface mLoaderCallBack = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                    Log.i("OpenCVT", "OpenCV Loaded!");
-                    break;
-                default:
-                    super.onManagerConnected(status);
-            }
-        }
-    };
-
+    BoomMenuButton bmb;
 
     @Override
     public void onResume() {
         super.onResume();
-        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_13, this, mLoaderCallBack);
     }
 
     @Override
@@ -113,9 +103,52 @@ public class MainActivity extends Activity {
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        ImagingUtils.getVersion();
 
-
+        answerFound = false;
         imageView = (ImageView) findViewById(R.id.image_view);
+        bmb = (BoomMenuButton) findViewById(R.id.bmb);
+        bmb.setButtonEnum(ButtonEnum.TextInsideCircle);
+        bmb.setPiecePlaceEnum(PiecePlaceEnum.DOT_3_1);
+        bmb.setButtonPlaceEnum(ButtonPlaceEnum.SC_3_1);
+        bmb.setNormalColor(Color.parseColor("#DCE775"));
+
+        TextInsideCircleButton.Builder builder = new TextInsideCircleButton.Builder()
+                        .normalImageRes(R.drawable.icons8_multiple_cameras)
+                        .normalText("")
+                        .listener(new OnBMClickListener() {
+                            @Override
+                            public void onBoomButtonClick(int index) {
+                                loadGeneric();
+                            }
+                        })
+                        .rotateImage(false);
+        bmb.addBuilder(builder);
+
+        TextInsideCircleButton.Builder builder1 = new TextInsideCircleButton.Builder()
+                        .normalImageRes(R.drawable.icons8_for_experienced)
+                        .normalText("")
+                        .listener(new OnBMClickListener() {
+                            @Override
+                            public void onBoomButtonClick(int index) {
+                                imageProcess();
+                            }
+                        })
+                        .rotateImage(false);
+        bmb.addBuilder(builder1);
+
+        TextInsideCircleButton.Builder builder2 = new TextInsideCircleButton.Builder()
+                        .normalImageRes(R.drawable.icons8_save)
+                        .normalText("")
+                        .listener(new OnBMClickListener() {
+                            @Override
+                            public void onBoomButtonClick(int index) {
+                                Log.i("OpenCVT", "Save to gallery button pressed");
+                                saveImageToGallery();
+                            }
+                        })
+                        .rotateImage(false);
+        bmb.addBuilder(builder2);
 
         String language = "eng";
         datapath = getFilesDir() + "/tesseract/";
@@ -129,7 +162,7 @@ public class MainActivity extends Activity {
         mTess.setVariable("classify_bin_numeric_mode", "1");
     }
 
-    public void loadGeneric(View view) {
+    public void loadGeneric() {
         /*CropImage.activity()
                 .setGuidelines(CropImageView.Guidelines.ON)
                 .start(this);*/
@@ -158,6 +191,52 @@ public class MainActivity extends Activity {
         Intent galleryIntent = new Intent(Intent.ACTION_PICK);
         galleryIntent.setType("image/*");
         startActivityForResult(galleryIntent, SELECT_FROM_GALLERY);
+    }
+
+    protected void saveImageToGallery(){
+        if(!answerFound) {
+            SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
+                    .setProgressBarColor(Color.WHITE)
+                    .setText("Please load and solve a sudoku first")
+                    .setDuration(Style.DURATION_MEDIUM)
+                    .setFrame(Style.ANIMATIONS_FLY)
+                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
+                    .setAnimations(Style.ANIMATIONS_POP).show();
+        } else {
+            File root = Environment.getExternalStorageDirectory();
+
+
+            File dir = new File(root.getAbsolutePath() + "/SudokuSolverAPP");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
+            File output = new File(dir, "Sudoku" + timeStamp + ".jpg");
+            OutputStream os = null;
+
+            try {
+                os = new FileOutputStream(output);
+                inputBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os);
+                os.flush();
+                os.close();
+                MediaScannerConnection.scanFile(this, new String[]{output.toString()}, null,
+                        new MediaScannerConnection.OnScanCompletedListener() {
+                            public void onScanCompleted(String path, Uri uri) {
+                                Log.i("OpenCVT", "image saved in gallery and gallery is refreshed.");
+                            }
+                        }
+                );
+                SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
+                        .setProgressBarColor(Color.WHITE)
+                        .setText("Image saved to gallery")
+                        .setDuration(Style.DURATION_SHORT)
+                        .setFrame(Style.ANIMATIONS_FLY)
+                        .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
+                        .setAnimations(Style.ANIMATIONS_POP).show();
+            } catch (Exception e) {
+                e.getStackTrace();
+            }
+        }
     }
 
     @TargetApi(Build.VERSION_CODES.M)
@@ -214,33 +293,6 @@ public class MainActivity extends Activity {
         return image;
     }
 
-    private void rotateBitmap(Bitmap bitmap) {
-        ExifInterface exifInterface = null;
-        try {
-            exifInterface = new ExifInterface(mImageFileLocation);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
-        Matrix matrix = new Matrix();
-        switch (orientation) {
-            case ExifInterface.ORIENTATION_ROTATE_90:
-                matrix.setRotate(90);
-                break;
-
-            case ExifInterface.ORIENTATION_ROTATE_180:
-                matrix.setRotate(180);
-                break;
-
-            case ExifInterface.ORIENTATION_ROTATE_270:
-                matrix.setRotate(270);
-                break;
-
-            default:
-        }
-        Bitmap rawInputBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-    }
 
     private void checkFile(File dir) {
         if (!dir.exists() && dir.mkdirs()) {
@@ -285,31 +337,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    public void rotateImage(View view) {
-        if (inputBitmap != null) {
-            Matrix matrix = new Matrix();
-            matrix.setRotate(90);
-            inputBitmap = Bitmap.createBitmap(inputBitmap, 0, 0, inputBitmap.getWidth(), inputBitmap.getHeight(), matrix, true);
-            imageView.setImageBitmap(inputBitmap);
-        } else {
-            SuperActivityToast.create(this, new Style(), Style.TYPE_BUTTON)
-                    .setButtonText("LOAD NOW")
-                    .setButtonIconResource(R.drawable.icons8_ok)
-                    .setOnButtonClickListener("good_tag_name", null, new SuperActivityToast.OnButtonClickListener() {
-                        @Override
-                        public void onClick(View view, Parcelable token) {
-                            loadGeneric(view);
-                        }
-                    })
-                    .setProgressBarColor(Color.WHITE)
-                    .setText("You need to load an image first.")
-                    .setDuration(Style.DURATION_MEDIUM)
-                    .setFrame(Style.ANIMATIONS_FLY)
-                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_BLUE_GREY))
-                    .setAnimations(Style.ANIMATIONS_POP).show();
-        }
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == SELECT_FROM_GALLERY && resultCode == RESULT_OK) {
@@ -332,20 +359,9 @@ public class MainActivity extends Activity {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 Exception error = result.getError();
                 Log.i("OpenCVT", "Error = " + error.getMessage());
-            }
-        } else if (resultCode == RESULT_OK && requestCode == 10) {
-            try {
-                Uri inputUri = data.getData();
-                Log.i("OpenCVT", "input URI : " + inputUri.toString());
-                InputStream imageStream = getContentResolver().openInputStream(inputUri);
-                inputBitmap = BitmapFactory.decodeStream(imageStream);
-                imageView.setImageBitmap(inputBitmap);
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         } else if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
             final Uri resultUri = UCrop.getOutput(data);
@@ -389,7 +405,7 @@ public class MainActivity extends Activity {
     }
 
 
-    public void imageProcess(View view) {
+    public void imageProcess() {
         if (inputBitmap != null)
             new ImageProcessing().execute();
         else
@@ -399,14 +415,14 @@ public class MainActivity extends Activity {
                     .setOnButtonClickListener("good_tag_name", null, new SuperActivityToast.OnButtonClickListener() {
                         @Override
                         public void onClick(View view, Parcelable token) {
-                            loadGeneric(view);
+                            loadGeneric();
                         }
                     })
                     .setProgressBarColor(Color.WHITE)
                     .setText("You need to load an image first")
                     .setDuration(Style.DURATION_MEDIUM)
                     .setFrame(Style.ANIMATIONS_FLY)
-                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_INDIGO))
+                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
                     .setAnimations(Style.ANIMATIONS_POP).show();
     }
 
@@ -431,12 +447,16 @@ public class MainActivity extends Activity {
         protected void onPostExecute(Bitmap bitmap) {
             if (verticalError == false) {
                 if (bitmap == null) {
+                    answerFound = false;
                     Log.i("OpenCVT", "On post exec, bitmap is null");
                 }
+                answerFound = true;
                 progressDialog.dismiss();
-                imageView.setImageBitmap(bitmap);
+                inputBitmap = bitmap;
+                imageView.setImageBitmap(inputBitmap);
                 return;
             } else if(nullPointerException) {
+                answerFound = false;
                 progressDialog.dismiss();
                 SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
                         .setProgressBarColor(Color.WHITE)
@@ -447,6 +467,7 @@ public class MainActivity extends Activity {
                         .setAnimations(Style.ANIMATIONS_POP).show();
                 return;
             } else {
+                answerFound = false;
                 progressDialog.dismiss();
                 SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
                         .setProgressBarColor(Color.WHITE)
@@ -506,14 +527,13 @@ public class MainActivity extends Activity {
             Mat lines = new Mat();
             Imgproc.HoughLinesP(cannyEdges, lines, 1, Math.PI / 180, 150);
 
-
             List<double[]> horizontalLines = new ArrayList<>();
             List<double[]> verticalLines = new ArrayList<>();
             List<double[]> SingleHorizontalLines = new ArrayList<>();
             List<double[]> SingleVerticalLines = new ArrayList<>();
 
-            for (int i = 0; i < lines.cols(); i++) {
-                double[] line = lines.get(0, i);
+            for (int i = 0; i < lines.rows(); i++) {
+                double[] line = lines.get(i, 0);
                 double x1 = line[0];
                 double y1 = line[1];
                 double x2 = line[2];
@@ -531,7 +551,7 @@ public class MainActivity extends Activity {
             Collections.sort(verticalLines, new VerticalLinesSort());
             Collections.sort(horizontalLines, new HorizontalLinesSort());
             int i = 0, j;
-            for (j = 0; j < 10; j++) {
+            for (j = 0; j < 15 || i < verticalLines.size(); j++) {
 
                 double smallestY = 5000, smallestX = 5000;
                 double largestY = 0, largestX = 0;
@@ -559,18 +579,23 @@ public class MainActivity extends Activity {
                     if (vert[3] > largestY)
                         largestY = vert[3];
                 }
-                double[] toAdd = new double[4];
-                toAdd[0] = smallestX;
-                toAdd[1] = smallestY - 100;
-                toAdd[2] = largestX;
-                toAdd[3] = largestY + 100;
-                SingleVerticalLines.add(toAdd);
+                if(smallestX != 5000 || smallestY != 5000) {
+                    double[] toAdd = new double[4];
+                    toAdd[0] = smallestX;
+                    toAdd[1] = smallestY - 100;
+                    toAdd[2] = largestX;
+                    toAdd[3] = largestY + 100;
+                    SingleVerticalLines.add(toAdd);
+                    //Imgproc.line(inputMat, new Point(toAdd[0], toAdd[1]), new Point(toAdd[2], toAdd[3]), new Scalar(0, 255, 0), 5);
+                }
                 i++;
             }
 
+            Log.i("OpenCVT", "Vert size : " + SingleVerticalLines.size());
+
 
             int ii = 0, jj;
-            for (jj = 0; jj < 10; jj++) {
+            for (jj = 0; jj < 15 || ii < horizontalLines.size(); jj++) {
                 double smallestY = 5000, smallestX = 5000;
                 double largestY = 0, largestX = 0;
                 for (; ii < horizontalLines.size() - 1; ii++) {
@@ -595,13 +620,16 @@ public class MainActivity extends Activity {
                     if (vert[3] > largestY)
                         largestY = vert[3];
                 }
-                double[] toAdd = new double[4];
-                toAdd[0] = smallestX - 100;
-                toAdd[1] = smallestY;
-                toAdd[2] = largestX + 100;
-                toAdd[3] = largestY;
-                SingleHorizontalLines.add(toAdd);
-                //Core.line(inputMat, new Point(toAdd[0], toAdd[1]), new Point(toAdd[2], toAdd[3]), new Scalar(225, 0, 0), 5);
+                if(smallestX != 5000 || smallestY != 5000) {
+                    double[] toAdd = new double[4];
+                    toAdd[0] = smallestX - 100;
+                    toAdd[1] = smallestY;
+                    toAdd[2] = largestX + 100;
+                    toAdd[3] = largestY;
+                    SingleHorizontalLines.add(toAdd);
+                    //Imgproc.line(inputMat, new Point(toAdd[0], toAdd[1]), new Point(toAdd[2], toAdd[3]), new Scalar(225, 0, 0), 5);
+                }
+
                 ii++;
             }
 
@@ -611,6 +639,7 @@ public class MainActivity extends Activity {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+
             double[] verticalCheck = SingleVerticalLines.get(0);
             if (Math.abs(verticalCheck[2] - verticalCheck[0]) > 100) {
                 Log.i("OpenCVT", "Image not vertical");
@@ -618,23 +647,21 @@ public class MainActivity extends Activity {
                 return null;
             }
 
-            Log.i("OpenCVT", "After Cacl  " + SingleVerticalLines.size() + SingleHorizontalLines.size());
-
-            //progressDialog.setMessage("Calculating intesection points");
             publishProgress(2);
             try {
                 Thread.sleep(500);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
             List<Point> intersectionPoints = new ArrayList<>();
             for (double[] hort : SingleHorizontalLines)
                 for (double[] vert : SingleVerticalLines) {
                     Point p = LineOperations.LineIntersection(new Point(hort[0], hort[1]), new Point(hort[2], hort[3]), new Point(vert[0], vert[1]), new Point(vert[2], vert[3]));
                     intersectionPoints.add(p);
+                    //Imgproc.circle(inputMat, p, 15, new Scalar(0, 0, 255), 8);
                 }
 
-            //progressDialog.setMessage("Performing OCR using Tesseract");
             publishProgress(3);
             Log.i("OpenCVT", "After inter.");
             List<Rect> sudokuTiles = new ArrayList<>();
@@ -667,13 +694,14 @@ public class MainActivity extends Activity {
             int finalNos[] = new int[81];
             int sudoku[][] = new int[9][9];
 
+
             for (int index = 0; index < sudokuTiles.size(); index++) {
                 finalNos[index] = 0;
                 Rect r = sudokuTiles.get(index);
                 Mat sudokuTileMat = new Mat(grayMat, r);
                 Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
                 Mat threshSudokuTileMat = new Mat();
-                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 5, 2);
                 Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
 
@@ -699,11 +727,11 @@ public class MainActivity extends Activity {
                 Mat sudokuTileMat = new Mat(grayMat, r);
                 Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
                 Mat threshSudokuTileMat = new Mat();
-                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 5, 2);
                 Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
 
-                String OCRResult = null;
+                String OCRResult;
                 mTess.setImage(sudokuTileBitmap);
                 OCRResult = mTess.getUTF8Text();
                 if (OCRResult.length() == 1) {
@@ -726,7 +754,7 @@ public class MainActivity extends Activity {
                 Mat sudokuTileMat = new Mat(grayMat, r);
                 Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
                 Mat threshSudokuTileMat = new Mat();
-                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 5, 2);
                 Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
 
@@ -753,11 +781,11 @@ public class MainActivity extends Activity {
                 Mat sudokuTileMat = new Mat(grayMat, r);
                 Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
                 Mat threshSudokuTileMat = new Mat();
-                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 5, 2);
                 Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
 
-                String OCRResult = null;
+                String OCRResult;
                 mTess.setImage(sudokuTileBitmap);
                 OCRResult = mTess.getUTF8Text();
                 if (OCRResult.length() == 1) {
@@ -780,11 +808,11 @@ public class MainActivity extends Activity {
                 Mat sudokuTileMat = new Mat(grayMat, r);
                 Imgproc.GaussianBlur(sudokuTileMat, sudokuTileMat, new Size(5, 5), 0);
                 Mat threshSudokuTileMat = new Mat();
-                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 101, 1);
+                Imgproc.adaptiveThreshold(sudokuTileMat, threshSudokuTileMat, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY_INV, 5, 1);
                 Bitmap sudokuTileBitmap = Bitmap.createBitmap(threshSudokuTileMat.cols(), threshSudokuTileMat.rows(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(threshSudokuTileMat, sudokuTileBitmap);
 
-                String OCRResult = null;
+                String OCRResult;
                 mTess.setImage(sudokuTileBitmap);
                 OCRResult = mTess.getUTF8Text();
                 if (OCRResult.length() == 1) {
@@ -828,7 +856,6 @@ public class MainActivity extends Activity {
                 t++;
             }
 
-            //progressDialog.setMessage("Finding the answer");
             publishProgress(4);
             SudokuSolver sudokuSolver = new SudokuSolver();
             sudoku = sudokuSolver.printFinal(sudoku);
@@ -851,7 +878,7 @@ public class MainActivity extends Activity {
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setShadowLayer(1f, 0f, 1f, Color.BLACK);
             paint.setStrokeWidth(2);
-            paint.setColor(Color.rgb(255, 213, 79));
+            paint.setColor(Color.parseColor("#ef5350"));
             paint.setTypeface(tf);
 
             s = 0;
@@ -875,7 +902,6 @@ public class MainActivity extends Activity {
 
                 t++;
             }
-
 
             Log.i("OpenCVT", "End!");
             return tempBitmap;
