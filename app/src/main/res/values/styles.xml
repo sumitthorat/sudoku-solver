@@ -8,16 +8,10 @@
     <style name="CustomProgressDialog" parent="android:Theme.DeviceDefault.Dialog">
         <item name="DialogTitleAppearance">@android:style/TextAppearance.Medium</item>
         <item name="DialogTitleText">Processing...</item>
-        <item name="DialogSpotColor">@android:color/holo_orange_dark</item>
+        <item name="DialogSpotColor">@color/lime</item>
         <item name="DialogSpotCount">4</item>
     </style>
 
-    <style name="MyTheme" parent="@style/Theme.AppCompat">
-        <item name="colorPrimary">#e6ee9c</item>
-        <item name="titleTextColor">#263238</item>
-        <item name="actionMenuTextColor">#263238</item>
-        <item name="android:textColorPrimary">#263238</item>
-    </style>
 
 </resources>
 

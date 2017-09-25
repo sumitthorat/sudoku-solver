@@ -37,7 +37,7 @@ import com.github.johnpersano.supertoasts.library.utils.PaletteUtils;
 import com.googlecode.tesseract.android.TessBaseAPI;
 import com.nightonke.boommenu.BoomButtons.ButtonPlaceEnum;
 import com.nightonke.boommenu.BoomButtons.OnBMClickListener;
-import com.nightonke.boommenu.BoomButtons.TextInsideCircleButton;
+import com.nightonke.boommenu.BoomButtons.TextOutsideCircleButton;
 import com.nightonke.boommenu.BoomMenuButton;
 import com.nightonke.boommenu.ButtonEnum;
 import com.nightonke.boommenu.Piece.PiecePlaceEnum;
@@ -108,14 +108,14 @@ public class MainActivity extends Activity {
         answerFound = false;
         imageView = (ImageView) findViewById(R.id.image_view);
         bmb = (BoomMenuButton) findViewById(R.id.bmb);
-        bmb.setButtonEnum(ButtonEnum.TextInsideCircle);
+        bmb.setButtonEnum(ButtonEnum.TextOutsideCircle);
         bmb.setPiecePlaceEnum(PiecePlaceEnum.DOT_3_1);
         bmb.setButtonPlaceEnum(ButtonPlaceEnum.SC_3_1);
         bmb.setNormalColor(Color.parseColor("#DCE775"));
 
-        TextInsideCircleButton.Builder builder = new TextInsideCircleButton.Builder()
+        TextOutsideCircleButton.Builder builder = new TextOutsideCircleButton.Builder()
                         .normalImageRes(R.drawable.icons8_multiple_cameras)
-                        .normalText("")
+                        .normalText("Load Image")
                         .listener(new OnBMClickListener() {
                             @Override
                             public void onBoomButtonClick(int index) {
@@ -125,9 +125,9 @@ public class MainActivity extends Activity {
                         .rotateImage(false);
         bmb.addBuilder(builder);
 
-        TextInsideCircleButton.Builder builder1 = new TextInsideCircleButton.Builder()
+        TextOutsideCircleButton.Builder builder1 = new TextOutsideCircleButton.Builder()
                         .normalImageRes(R.drawable.icons8_for_experienced)
-                        .normalText("")
+                        .normalText("Start Processing")
                         .listener(new OnBMClickListener() {
                             @Override
                             public void onBoomButtonClick(int index) {
@@ -137,9 +137,9 @@ public class MainActivity extends Activity {
                         .rotateImage(false);
         bmb.addBuilder(builder1);
 
-        TextInsideCircleButton.Builder builder2 = new TextInsideCircleButton.Builder()
+        TextOutsideCircleButton.Builder builder2 = new TextOutsideCircleButton.Builder()
                         .normalImageRes(R.drawable.icons8_save)
-                        .normalText("")
+                        .normalText("Save to Gallery")
                         .listener(new OnBMClickListener() {
                             @Override
                             public void onBoomButtonClick(int index) {
