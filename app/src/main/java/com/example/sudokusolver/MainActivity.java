@@ -144,7 +144,7 @@ public class MainActivity extends Activity {
                             @Override
                             public void onBoomButtonClick(int index) {
                                 Log.i("OpenCVT", "Save to gallery button pressed");
-                                saveImageToGallery();
+                                new saveImageToGallery().execute();
                             }
                         })
                         .rotateImage(false);
@@ -193,39 +193,29 @@ public class MainActivity extends Activity {
         startActivityForResult(galleryIntent, SELECT_FROM_GALLERY);
     }
 
-    protected void saveImageToGallery(){
-        if(!answerFound) {
-            SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
-                    .setProgressBarColor(Color.WHITE)
-                    .setText("Please load and solve a sudoku first")
-                    .setDuration(Style.DURATION_MEDIUM)
-                    .setFrame(Style.ANIMATIONS_FLY)
-                    .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
-                    .setAnimations(Style.ANIMATIONS_POP).show();
-        } else {
-            File root = Environment.getExternalStorageDirectory();
 
+    private class saveImageToGallery extends AsyncTask<Void, Integer, Void> {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
 
-            File dir = new File(root.getAbsolutePath() + "/SudokuSolverAPP");
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
-            File output = new File(dir, "Sudoku" + timeStamp + ".jpg");
-            OutputStream os = null;
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+        }
 
-            try {
-                os = new FileOutputStream(output);
-                inputBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os);
-                os.flush();
-                os.close();
-                MediaScannerConnection.scanFile(this, new String[]{output.toString()}, null,
-                        new MediaScannerConnection.OnScanCompletedListener() {
-                            public void onScanCompleted(String path, Uri uri) {
-                                Log.i("OpenCVT", "image saved in gallery and gallery is refreshed.");
-                            }
-                        }
-                );
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+            if(values[0] == 0) {
+                SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
+                        .setProgressBarColor(Color.WHITE)
+                        .setText("Please load and solve a sudoku first")
+                        .setDuration(Style.DURATION_MEDIUM)
+                        .setFrame(Style.ANIMATIONS_FLY)
+                        .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
+                        .setAnimations(Style.ANIMATIONS_POP).show();
+            } else {
                 SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
                         .setProgressBarColor(Color.WHITE)
                         .setText("Image saved to gallery")
@@ -233,9 +223,43 @@ public class MainActivity extends Activity {
                         .setFrame(Style.ANIMATIONS_FLY)
                         .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
                         .setAnimations(Style.ANIMATIONS_POP).show();
-            } catch (Exception e) {
-                e.getStackTrace();
             }
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            if(!answerFound) {
+                publishProgress(0);
+            } else {
+                File root = Environment.getExternalStorageDirectory();
+
+
+                File dir = new File(root.getAbsolutePath() + "/SudokuSolverAPP");
+                if (!dir.exists()) {
+                    boolean mkDirResult = dir.mkdirs();
+                }
+                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
+                File output = new File(dir, "Sudoku" + timeStamp + ".jpg");
+                OutputStream os = null;
+
+                try {
+                    os = new FileOutputStream(output);
+                    inputBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os);
+                    os.flush();
+                    os.close();
+                    MediaScannerConnection.scanFile(getApplicationContext(), new String[]{output.toString()}, null,
+                            new MediaScannerConnection.OnScanCompletedListener() {
+                                public void onScanCompleted(String path, Uri uri) {
+                                    Log.i("OpenCVT", "image saved in gallery and gallery is refreshed.");
+                                }
+                            }
+                    );
+                    publishProgress(1);
+                } catch (Exception e) {
+                    e.getStackTrace();
+                }
+            }
+            return null;
         }
     }
 
