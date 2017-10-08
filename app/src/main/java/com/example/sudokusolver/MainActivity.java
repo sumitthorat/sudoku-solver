@@ -83,7 +83,6 @@ public class MainActivity extends Activity {
     private TessBaseAPI mTess;
     String datapath = "";
     BoomMenuButton bmb;
-    boolean fromLiveFeed = false;
     Mat croppedMatFromLiveFeed;
 
     @Override
@@ -156,7 +155,7 @@ public class MainActivity extends Activity {
         bmb.addBuilder(builder2);
 
         TextOutsideCircleButton.Builder builder3 = new TextOutsideCircleButton.Builder()
-                .normalImageRes(R.drawable.icons8_instagram_new)
+                .normalImageRes(R.drawable.icons8_camcorder_pro)
                 .normalText("Live Feed(Experimental)")
                 .listener(new OnBMClickListener() {
                     @Override
@@ -424,6 +423,11 @@ public class MainActivity extends Activity {
             if(resultCode == RESULT_OK) {
                 Log.i("OpenCVT", "From Live Feed");
                 croppedMatFromLiveFeed = MatDataHolder.getData();
+                //long addr = data.getLongExtra("nativeObjAddr", 0);
+                //Log.i("OpenCVT", "Long value : " + addr);
+               // Mat tempImg = new Mat(addr);
+                //croppedMatFromLiveFeed = tempImg.clone();
+
                 inputBitmap = Bitmap.createBitmap(croppedMatFromLiveFeed.width(), croppedMatFromLiveFeed.height(), Bitmap.Config.ARGB_8888);
                 Utils.matToBitmap(croppedMatFromLiveFeed, inputBitmap);
                 imageView.setImageBitmap(inputBitmap);
@@ -492,28 +496,36 @@ public class MainActivity extends Activity {
 
         @Override
         protected void onPostExecute(Bitmap bitmap) {
-            if (verticalError == false) {
-                if (bitmap == null) {
-                    answerFound = false;
-                    Log.i("OpenCVT", "On post exec, bitmap is null");
-                }
-                answerFound = true;
-                progressDialog.dismiss();
-                inputBitmap = bitmap;
-                imageView.setImageBitmap(inputBitmap);
-                return;
-            } else if(nullPointerException) {
+            if (nullPointerException) {
                 answerFound = false;
                 progressDialog.dismiss();
                 SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
                         .setProgressBarColor(Color.WHITE)
-                        .setText("Unknown error occured. Please try again.")
+                        .setText("Please try again.")
                         .setDuration(Style.DURATION_MEDIUM)
                         .setFrame(Style.ANIMATIONS_FLY)
                         .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
                         .setAnimations(Style.ANIMATIONS_POP).show();
                 return;
-            } else {
+            } else if (verticalError == false) {
+                if (bitmap == null) {
+                    answerFound = false;
+                    Log.i("OpenCVT", "On post exec, bitmap is null");
+                    SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
+                            .setProgressBarColor(Color.WHITE)
+                            .setText("Unknown error occured. Please try again.")
+                            .setDuration(Style.DURATION_MEDIUM)
+                            .setFrame(Style.ANIMATIONS_FLY)
+                            .setColor(PaletteUtils.getSolidColor(PaletteUtils.MATERIAL_LIME))
+                            .setAnimations(Style.ANIMATIONS_FLY).show();
+                } else {
+                    answerFound = true;
+                    progressDialog.dismiss();
+                    inputBitmap = bitmap;
+                    imageView.setImageBitmap(inputBitmap);
+                }
+                return;
+            } else if (!nullPointerException) {
                 answerFound = false;
                 progressDialog.dismiss();
                 SuperActivityToast.create(MainActivity.this, new Style(), Style.TYPE_STANDARD)
@@ -676,6 +688,11 @@ public class MainActivity extends Activity {
                 ii++;
             }
 
+            if(SingleHorizontalLines.size() != 10 && SingleVerticalLines.size() != 10) {
+                nullPointerException = true;
+                return null;
+            }
+
             publishProgress(1);
             try {
                 Thread.sleep(500);
@@ -683,12 +700,12 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
             }
 
-            /*double[] verticalCheck = SingleVerticalLines.get(0);
+            double[] verticalCheck = SingleVerticalLines.get(0);
             if (Math.abs(verticalCheck[2] - verticalCheck[0]) > 100) {
                 Log.i("OpenCVT", "Image not vertical");
                 verticalError = true;
                 return null;
-            }*/
+            }
 
             publishProgress(2);
             try {

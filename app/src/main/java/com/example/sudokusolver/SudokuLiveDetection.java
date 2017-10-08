@@ -11,8 +11,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 
-import com.rw.imaging.ImagingUtils;
-
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
@@ -36,9 +34,10 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
         this.getClass();
     }
 
-    Button captureButton;
+    Button captureButton, flashButton;
     //ImageView imageView;
     Mat cropped;
+    boolean flashEnabled = false;
 
     private PortraitCameraView mOpenCvCameraView;
 
@@ -46,11 +45,19 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_live_detection);
-        ImagingUtils.getVersion();
+        //ImagingUtils.getVersion();
         //Log.i(TAG, "After OpenCV loading");
         //checkPermissions();
         //imageView = findViewById(R.id.imageView);
         captureButton = findViewById(R.id.captureButton);
+        mOpenCvCameraView = findViewById(R.id.javaCamera);
+        flashButton = findViewById(R.id.flashButton);
+
+        mOpenCvCameraView.enableView();
+
+        mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
+
+        mOpenCvCameraView.setCvCameraViewListener(this);
 
         captureButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -61,18 +68,31 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
                 MatDataHolder.setData(cropped);
                 //Intent data = new Intent();
                 //data.setData(null);
+                /*long addr = cropped.getNativeObjAddr();
+                Intent data = new Intent();
+                data.putExtra("nativeObjAddr", addr);
+                setResult(RESULT_OK, data);*/
                 setResult(RESULT_OK);
                 finish();
             }
         });
 
+        flashButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(flashEnabled) {
+                    mOpenCvCameraView.flashToggleOFF();
+                    flashEnabled = false;
+                } else {
+                    mOpenCvCameraView.flashToggleON();
+                    flashEnabled = true;
+                }
+            }
+        });
 
-        mOpenCvCameraView = findViewById(R.id.javaCamera);
-        mOpenCvCameraView.enableView();
 
-        mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
 
-        mOpenCvCameraView.setCvCameraViewListener(this);
+
     }
     @TargetApi(Build.VERSION_CODES.M)
     private void checkPermissions() {
@@ -180,6 +200,7 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
                 }
             }
         }
+
 
         return displayMat;
     }

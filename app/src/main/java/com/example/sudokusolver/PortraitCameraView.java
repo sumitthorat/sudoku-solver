@@ -24,6 +24,7 @@ public class PortraitCameraView extends CameraBridgeViewBase implements Camera.P
     private static final int MAGIC_TEXTURE_ID = 10;
     private static final String TAG = "JavaCameraView";
 
+
     private byte mBuffer[];
     private Mat[] mFrameChain;
     private int mChainIdx = 0;
@@ -93,7 +94,7 @@ public class PortraitCameraView extends CameraBridgeViewBase implements Camera.P
 
                     params.setPreviewFormat(ImageFormat.NV21);
                     Log.d(TAG, "Set preview size to " + Integer.valueOf((int) frameSize.width) + "x" + Integer.valueOf((int) frameSize.height));
-                    params.setPreviewSize((int) frameSize.width, (int) frameSize.height);
+                    params.setPreviewSize((int) sizes.get(0).width, (int) sizes.get(0).height);
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH)
                         params.setRecordingHint(true);
@@ -102,12 +103,23 @@ public class PortraitCameraView extends CameraBridgeViewBase implements Camera.P
                     if (FocusModes != null && FocusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
                         params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
                     }
+                    //params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
 
                     mCamera.setParameters(params);
                     params = mCamera.getParameters();
 
+                    //Camera.Parameters params = mCamera.getParameters();
+                    /*List<Camera.Size> resList = mCamera.getParameters().getSupportedPictureSizes();
+                    int listNum = 0;// 0 is the maximum resolution
+                    int width = resList.get(listNum).width;
+                    int height = resList.get(listNum).height;
+                    params.setPictureSize(width, height);
+                    mCamera.setParameters(params);*/
+
                     mFrameWidth = params.getPreviewSize().height; //the frame width and height of the super class are used to generate the cached bitmap and they need to be the size of the resulting frame
                     mFrameHeight = params.getPreviewSize().width;
+                    //mFrameWidth = 3264;
+                    //mFrameHeight = 1836;
 
                     int realWidth = mFrameHeight; //the real width and height are the width and height of the frame received in onPreviewFrame
                     int realHeight = mFrameWidth;
@@ -156,6 +168,24 @@ public class PortraitCameraView extends CameraBridgeViewBase implements Camera.P
         }
 
         return result;
+    }
+
+    public void flashToggleON() {
+        if(mCamera != null) {
+            Camera.Parameters parameters = mCamera.getParameters();
+            parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+            mCamera.setParameters(parameters);
+            mCamera.startPreview();
+        }
+    }
+
+    public void flashToggleOFF() {
+        if(mCamera != null) {
+            Camera.Parameters parameters = mCamera.getParameters();
+            parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+            mCamera.setParameters(parameters);
+            mCamera.startPreview();
+        }
     }
 
     protected void releaseCamera() {

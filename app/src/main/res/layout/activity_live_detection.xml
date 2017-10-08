@@ -5,16 +5,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.example.sudokusolver.SudokuLiveDetection"
-    android:orientation="vertical">
+    tools:context="com.example.sudokusolver.SudokuLiveDetection" >
 
 
-    <!--<com.example.sudokusolver.PortraitCameraView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        opencv:show_fps="true"
-        android:id="@+id/javaCamera"
-        opencv:camera_id = "any"/> -->
     <com.example.sudokusolver.PortraitCameraView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -23,24 +16,26 @@
         opencv:camera_id = "any"/>
 
 
-
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Capture Image"
         android:id="@+id/captureButton"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="21dp" />
-
-    <!-- <android.support.design.widget.FloatingActionButton
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:src="@drawable/icons8_barber_scissors"
-        android:id="@+id/captureButton"
+        android:layout_marginBottom="14dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginEnd="35dp"
-        android:layout_marginBottom="17dp" /> -->
+        android:layout_marginEnd="25dp" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="FLASH"
+        android:id="@+id/flashButton"
+        android:layout_alignBottom="@+id/captureButton"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="40dp"
+        android:layout_alignTop="@+id/captureButton" />
+
+
 
 </RelativeLayout>
