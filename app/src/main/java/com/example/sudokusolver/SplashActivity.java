@@ -54,7 +54,7 @@ public class SplashActivity extends Activity {
 
         @Override
         protected Void doInBackground(Void... voids) {
-            Log.i("OpenCVT", "Copy tess from SplashActivity");
+            Log.i("OpenCVT", "Copy tessdata   from SplashActivity");
             String datapath = getFilesDir() + "/tesseract/";
             try {
                 String filepath = datapath + "/tessdata/eng.traineddata";
