@@ -94,7 +94,8 @@ public class PortraitCameraView extends CameraBridgeViewBase implements Camera.P
 
                     params.setPreviewFormat(ImageFormat.NV21);
                     Log.d(TAG, "Set preview size to " + Integer.valueOf((int) frameSize.width) + "x" + Integer.valueOf((int) frameSize.height));
-                    params.setPreviewSize((int) sizes.get(0).width, (int) sizes.get(0).height);
+
+                    params.setPreviewSize(sizes.get(0).width, sizes.get(0).height);
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH)
                         params.setRecordingHint(true);

@@ -42,7 +42,6 @@ import com.nightonke.boommenu.BoomMenuButton;
 import com.nightonke.boommenu.ButtonEnum;
 import com.nightonke.boommenu.Piece.PiecePlaceEnum;
 import com.rw.imaging.ImagingUtils;
-import com.theartofdev.edmodo.cropper.CropImage;
 import com.yalantis.ucrop.UCrop;
 
 import org.opencv.android.Utils;
@@ -67,6 +66,7 @@ import java.util.List;
 import java.util.Locale;
 
 import dmax.dialog.SpotsDialog;
+import uk.co.samuelwall.materialtaptargetprompt.MaterialTapTargetPrompt;
 
 
 public class MainActivity extends Activity {
@@ -79,6 +79,8 @@ public class MainActivity extends Activity {
     private static final int REQUEST_EXT_STORAGE = 1;
     private static final int SELECT_FROM_GALLERY = 2;
     private static final int LIVE_FEED = 3;
+    private static final int REQUEST_CAMERA_PERMISSION = 4;
+    private static final int REQUEST_WRITE_PERMISSION = 5;
     private String mImageFileLocation;
     private TessBaseAPI mTess;
     String datapath = "";
@@ -107,7 +109,11 @@ public class MainActivity extends Activity {
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         ImagingUtils.getVersion();
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            checkPermissions();
 
         answerFound = false;
         imageView = findViewById(R.id.image_view);
@@ -167,6 +173,23 @@ public class MainActivity extends Activity {
                 .rotateImage(false);
         bmb.addBuilder(builder3);
 
+        MaterialTapTargetPrompt materialTapTargetPrompt = new MaterialTapTargetPrompt.Builder(MainActivity.this)
+                .setTarget(findViewById(R.id.bmb))
+                .setPrimaryText("Start Solving Sudokus")
+                .setSecondaryText("Tap the menu to load an image and process it")
+                .setPromptStateChangeListener(new MaterialTapTargetPrompt.PromptStateChangeListener()
+                {
+                    @Override
+                    public void onPromptStateChanged(MaterialTapTargetPrompt prompt, int state)
+                    {
+                        if (state == MaterialTapTargetPrompt.STATE_FOCAL_PRESSED)
+                        {
+                            // User has pressed the prompt target
+                        }
+                    }
+                })
+                .show();
+
         String language = "eng";
         datapath = getFilesDir() + "/tesseract/";
         mTess = new TessBaseAPI();
@@ -179,10 +202,20 @@ public class MainActivity extends Activity {
         mTess.setVariable("classify_bin_numeric_mode", "1");
     }
 
+    @TargetApi(Build.VERSION_CODES.M)
+    private void checkPermissions() {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+        }
+
+        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
+        }
+
+        return;
+    }
+
     public void loadGeneric() {
-        /*CropImage.activity()
-                .setGuidelines(CropImageView.Guidelines.ON)
-                .start(this);*/
         final CharSequence[] items = {"Gallery", "Camera"};
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("SELECT SOURCE");
@@ -385,21 +418,6 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-            }
-        } else if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
-            CropImage.ActivityResult result = CropImage.getActivityResult(data);
-            if (resultCode == RESULT_OK) {
-                try {
-                    Uri resultUri = result.getUri();
-                    InputStream imageStream = getContentResolver().openInputStream(resultUri);
-                    inputBitmap = BitmapFactory.decodeStream(imageStream);
-                    imageView.setImageBitmap(inputBitmap);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
-                Exception error = result.getError();
-                Log.i("OpenCVT", "Error = " + error.getMessage());
             }
         } else if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
             final Uri resultUri = UCrop.getOutput(data);

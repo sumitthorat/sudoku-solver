@@ -18,7 +18,6 @@ import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
@@ -49,9 +48,9 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
         //Log.i(TAG, "After OpenCV loading");
         //checkPermissions();
         //imageView = findViewById(R.id.imageView);
-        captureButton = findViewById(R.id.captureButton);
+        //captureButton = findViewById(R.id.captureButton);
         mOpenCvCameraView = findViewById(R.id.javaCamera);
-        flashButton = findViewById(R.id.flashButton);
+        //flashButton = findViewById(R.id.flashButton);
 
         mOpenCvCameraView.enableView();
 
@@ -59,7 +58,7 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
 
         mOpenCvCameraView.setCvCameraViewListener(this);
 
-        captureButton.setOnClickListener(new View.OnClickListener() {
+        /*captureButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 //Bitmap bitmap = Bitmap.createBitmap(cropped.width(), cropped.height(), Bitmap.Config.ARGB_8888);
@@ -71,7 +70,7 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
                 /*long addr = cropped.getNativeObjAddr();
                 Intent data = new Intent();
                 data.putExtra("nativeObjAddr", addr);
-                setResult(RESULT_OK, data);*/
+                setResult(RESULT_OK, data);
                 setResult(RESULT_OK);
                 finish();
             }
@@ -88,12 +87,24 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
                     flashEnabled = true;
                 }
             }
-        });
-
-
-
-
+        });*/
     }
+    public void captureButtonClicked(View view) {
+        MatDataHolder.setData(cropped);
+        setResult(RESULT_OK);
+        finish();
+    }
+
+   public void flashToggle(View view) {
+       if(flashEnabled) {
+           mOpenCvCameraView.flashToggleOFF();
+           flashEnabled = false;
+       } else {
+           mOpenCvCameraView.flashToggleON();
+           flashEnabled = true;
+       }
+   }
+
     @TargetApi(Build.VERSION_CODES.M)
     private void checkPermissions() {
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -134,15 +145,15 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
 
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         Mat grayMat= inputFrame.gray();
-        Mat blurMat = new Mat();
-        Imgproc.GaussianBlur(grayMat, blurMat, new Size(5,5), 0);
-        Mat thresh = new Mat();
+        //Mat blurMat = new Mat();
+        //Imgproc.GaussianBlur(grayMat, blurMat, new Size(5,5), 0);
+        Mat cannyEdges = new Mat();
         //Imgproc.adaptiveThreshold(blurMat, thresh, 255,1,1,11,2);
-        Imgproc.Canny(blurMat, thresh,10, 100);
+        Imgproc.Canny(grayMat, cannyEdges,10, 100);
 
         List<MatOfPoint> contours = new ArrayList<>();
         Mat hier = new Mat();
-        Imgproc.findContours(thresh, contours, hier, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(cannyEdges, contours, hier, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
         hier.release();
 
         MatOfPoint2f biggest = new MatOfPoint2f();
@@ -184,10 +195,10 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
                     }
                 }
             // draw the outer box
-            Imgproc.line(displayMat, new Point(points[0].x, points[0].y), new Point(points[1].x, points[1].y), new Scalar(255, 0, 0), 2);
-            Imgproc.line(displayMat, new Point(points[1].x, points[1].y), new Point(points[2].x, points[2].y), new Scalar(255, 0, 0), 2);
-            Imgproc.line(displayMat, new Point(points[2].x, points[2].y), new Point(points[3].x, points[3].y), new Scalar(255, 0, 0), 2);
-            Imgproc.line(displayMat, new Point(points[3].x, points[3].y), new Point(points[0].x, points[0].y), new Scalar(255, 0, 0), 2);
+            Imgproc.line(displayMat, new Point(points[0].x, points[0].y), new Point(points[1].x, points[1].y), new Scalar(0, 255, 0), 5);
+            Imgproc.line(displayMat, new Point(points[1].x, points[1].y), new Point(points[2].x, points[2].y), new Scalar(0, 255, 0), 5);
+            Imgproc.line(displayMat, new Point(points[2].x, points[2].y), new Point(points[3].x, points[3].y), new Scalar(0, 255, 0), 5);
+            Imgproc.line(displayMat, new Point(points[3].x, points[3].y), new Point(points[0].x, points[0].y), new Scalar(0, 255, 0), 5);
             // crop the image
             //Rect R = new Rect(new Point(points[0].x - t, points[0].y - t), new Point(points[2].x + t, points[2].y + t));
             //Rect R = new Rect(new Point(points[0].x - padding, points[0].y - padding), new Point(points[2].x + padding, points[2].y + padding));
@@ -200,8 +211,6 @@ public class SudokuLiveDetection extends Activity implements CameraBridgeViewBas
                 }
             }
         }
-
-
         return displayMat;
     }
 }
